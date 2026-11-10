@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "claide"
+dynamic = ["version"]
+description = "Crée des sites web complets en Python : pages, routes, formulaires, API, sessions et composants Uiverse.io."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+authors = [{ name = "kurodaki-dev" }]
+keywords = ["web", "framework", "html", "website", "uiverse", "css", "wsgi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Natural Language :: French",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/kurodaki-dev/Claide"
+Issues = "https://github.com/kurodaki-dev/Claide/issues"
+
+[project.scripts]
+claide = "claide.cli:main"
+
+[tool.hatch.version]
+path = "claide/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["claide", "tests", "examples", "README.md", "LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
