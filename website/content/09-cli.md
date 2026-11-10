@@ -19,4 +19,4 @@ claide build app:app --out public
 claide ui https://uiverse.io/0x-Sarthak/hungry-penguin-30 --save button.html
 ```
 
-The `app:app` target means "the `app` object in the `app.py` module". If your file is `server.py` and the object is `site`, use `claide run server:site`.
+The `app:app` target means "the `app` object in the `app.py` module". If your file is `server.py` and the object is `site`, use `claide run server:site`. Sites written with `@route` / `run()` don't have an `app` object: `claide run app` finds them anyway.

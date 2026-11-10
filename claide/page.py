@@ -35,9 +35,9 @@ class Page:
 
     def __init__(
         self,
-        title: str = "",
+        title: Optional[str] = None,
         *children: Any,
-        lang: str = "en",
+        lang: Optional[str] = None,
         charset: str = "utf-8",
         description: Optional[str] = None,
         favicon: Optional[str] = None,
@@ -131,7 +131,7 @@ class Page:
         head: List[str] = [
             f'<meta charset="{escape(self.charset)}">',
             f'<meta name="viewport" content="{escape(self.viewport)}">',
-            f"<title>{escape(self.title)}</title>",
+            f"<title>{escape(self.title or '')}</title>",
         ]
         if self.base_css:
             # First in <head>, so any stylesheet of the page can override it.
@@ -162,7 +162,7 @@ class Page:
 
         body_attrs = render_attrs(self.body.attrs)
         body_inner = "".join(render_node(c) for c in self.body.children)
-        html_attrs = render_attrs({"lang": self.lang, **self.html_attrs})
+        html_attrs = render_attrs({"lang": self.lang or "en", **self.html_attrs})
         nl = "\n"
         return (
             f"<!DOCTYPE html>\n<html{html_attrs}>\n<head>\n{nl.join(head)}\n</head>\n"

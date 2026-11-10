@@ -12,7 +12,17 @@ app.run(host="127.0.0.1", port=8000, debug=True)
 
 ## Production (WSGI)
 
-`App` is a standard WSGI application, so it works with any WSGI server:
+A Claide application is a standard WSGI application, so it works with any WSGI server. If your site uses the `@route` / `run()` shortcuts, write `app = run()` on the last line so the server can find the application:
+
+```python
+from claide import *
+
+@route("/")
+def home():
+    return h1("Hello!")
+
+app = run()     # starts the dev server with "python app.py", does nothing when imported
+```
 
 ```bash
 pip install gunicorn
@@ -32,8 +42,12 @@ This also works on platforms like Render, Railway, Fly.io or PythonAnywhere: poi
 
 Sites without server logic can be exported as plain HTML files and hosted anywhere (GitHub Pages, Netlify, Cloudflare Pages...):
 
+```bash
+claide build app --out dist
+```
+
 ```python
-app.build("dist")                                    # or: claide build app:app
+app.build("dist")                                     # same thing from Python
 app.build("dist", extra_paths=["/blog/1", "/blog/2"]) # also export dynamic routes
 ```
 

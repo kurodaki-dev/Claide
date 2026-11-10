@@ -38,18 +38,18 @@ The default maximum request size is 16 MB: change it with `App(max_content_lengt
 
 ## Sessions
 
-Sessions are stored in a cookie signed with HMAC: users can read it but cannot modify it. Give your app a secret key:
+`request.session` is a dictionary kept between requests for each visitor. It works without any setup:
 
 ```python
-app = App(__name__, secret_key="a-long-random-string")
-
-@app.get("/")
-def home(request):
+@route("/")
+def home():
     request.session["visits"] = request.session.get("visits", 0) + 1
-    return f"Visit number {request.session['visits']}"
+    return h1(f"Visit number {request.session['visits']}")
 ```
 
-> Generate a key with `python -c "import secrets; print(secrets.token_hex(32))"`, or set the `CLAIDE_SECRET_KEY` environment variable. Never commit a production key.
+Sessions are stored in a cookie signed with HMAC: visitors can read it but cannot modify it. During development Claide generates the signing key itself and keeps it in your user cache folder, outside the project, so it is never committed.
+
+> In production, set your own key with the `CLAIDE_SECRET_KEY` environment variable or `App(secret_key=...)`, so that every server uses the same one. Generate one with `python -c "import secrets; print(secrets.token_hex(32))"`.
 
 Session values must be JSON-serializable. Use `request.session.pop("key", None)` or `request.session.clear()` to log a user out.
 

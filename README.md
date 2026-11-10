@@ -15,22 +15,47 @@ The package is published on PyPI as `claide-web`, but you import it as `claide`.
 
 ## Quick start
 
+```python
+from claide import *
+
+@route("/")
+def home():
+    return h1("Hello!"), p("Welcome to my site.")
+
+run()
+```
+
+`python app.py`, open http://127.0.0.1:8000, done. The page has a clean default style,
+its title comes from the `<h1>`, and the server reloads when you save.
+
+```python
+@route("/contact")
+def contact(name: str = "", age: int = 0):      # form fields arrive as parameters
+    if request.method == "POST":
+        request.session["name"] = name            # sessions work without any setup
+        return h1(f"Thanks {name}!")
+    return h1("Contact"), form(
+        label("Name", input_(name="name")),
+        label("Age", input_(name="age", type="number")),
+        button("Send"),
+        method="post",
+    )
+
+@get("/api/square/<int:n>")
+def square(n):
+    return {"square": n * n}                      # a dict is sent as JSON
+```
+
+- Every HTML tag is a function: `h1`, `p`, `div`, `a`, `img`, `form`, `input_`...
+- `static/style.css`, `static/script.js` and `static/favicon.*` are linked automatically.
+- `md("""...""")` turns Markdown into HTML; `ui("https://uiverse.io/...")` adds a Uiverse component.
+
+Or start from a template:
+
 ```bash
 claide new mysite
 cd mysite
-python app.py        # -> http://127.0.0.1:8000 (auto-reload)
-```
-
-```python
-from claide import App, Page, tags as t
-
-app = App(__name__)
-
-@app.route("/")
-def home():
-    return Page("Home", t.h1("Hello!"), t.p("My first Claide website."))
-
-app.run()
+python app.py
 ```
 
 ## Uiverse / cssbuttons.io components

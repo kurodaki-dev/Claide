@@ -50,7 +50,7 @@ from .page import Page
 
 __all__ = [
     "App", "Router", "Request", "Response", "UploadedFile", "HTTPError",
-    "redirect", "abort", "send_file",
+    "redirect", "abort", "send_file", "request",
 ]
 
 
@@ -256,11 +256,12 @@ class Request:
 
     @property
     def session(self) -> "Session":
-        """User session stored in a signed cookie (requires ``secret_key``)."""
+        """User session stored in a signed cookie."""
         if self._session is None:
-            if not self.app or not self.app.secret_key:
-                raise RuntimeError("Sessions require App(secret_key='...').")
-            self._session = Session.load(self.cookies.get(self.app.session_cookie, ""), self.app.secret_key)
+            if not self.app:
+                raise RuntimeError("Sessions need an App.")
+            key = self.app.get_secret_key()
+            self._session = Session.load(self.cookies.get(self.app.session_cookie, ""), key)
         return self._session
 
     def __repr__(self) -> str:
@@ -557,12 +558,108 @@ class Router:
 _local = threading.local()
 
 
+class _RequestProxy:
+    """``from claide import request``: the request being handled in this thread."""
+
+    def _get(self) -> Request:
+        req = getattr(_local, "request", None)
+        if req is None:
+            raise RuntimeError("'request' can only be used while handling a request (inside a route).")
+        return req
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._get(), name)
+
+    def __repr__(self) -> str:
+        req = getattr(_local, "request", None)
+        return repr(req) if req is not None else "<request: none>"
+
+
+request = _RequestProxy()
+
+
+def _first_heading(node: Any) -> Optional[str]:
+    """Text of the first <h1> found in a tree of elements."""
+    stack = [node]
+    while stack:
+        el = stack.pop(0)
+        if isinstance(el, Element):
+            if el.tag == "h1":
+                return _text_of(el).strip() or None
+            stack[0:0] = list(el.children)
+    return None
+
+
+def _text_of(node: Any) -> str:
+    if isinstance(node, Element):
+        return "".join(_text_of(c) for c in node.children)
+    if isinstance(node, (str, int, float)) and not hasattr(node, "__html__"):
+        return str(node)
+    return ""
+
+
+_TRUE = {"1", "true", "on", "yes", "y"}
+_FALSE = {"0", "false", "off", "no", "n", ""}
+
+
+def _convert(value: Any, annotation: Any, name: str) -> Any:
+    target = annotation
+    if isinstance(target, str):
+        target = {"int": int, "float": float, "bool": bool, "str": str}.get(target, None)
+    if target is None or target is inspect.Parameter.empty or isinstance(value, UploadedFile):
+        return value
+    try:
+        if target is bool:
+            if isinstance(value, bool):
+                return value
+            text = str(value).strip().lower()
+            if text in _TRUE:
+                return True
+            if text in _FALSE:
+                return False
+            raise ValueError(value)
+        if target in (int, float):
+            return target(value)
+        if target is str:
+            return str(value)
+    except (TypeError, ValueError):
+        raise HTTPError(400, f"Invalid value for '{name}': expected {target.__name__}") from None
+    return value
+
+
+def _params_from_request(func: Callable, params: Any, given: Dict[str, Any], req: Request) -> Dict[str, Any]:
+    """Fill the remaining parameters of a route function from the request.
+
+    ``def contact(name, age: int = 0)`` receives ``name`` and ``age`` from the
+    form, the JSON body or the query string, converted to the annotated type.
+    """
+    filled: Dict[str, Any] = {}
+    for pname, param in params.items():
+        if pname in given or param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+            continue
+        value: Any = None
+        if req.method in ("POST", "PUT", "PATCH", "DELETE") and req.content_type.startswith("multipart/") \
+                and pname in req.files:
+            value = req.files[pname]
+        if value is None:
+            value = req.get(pname)
+        if value is None:
+            if param.default is param.empty:
+                if param.annotation is bool or param.annotation == "bool":
+                    filled[pname] = False  # an unchecked checkbox is not sent at all
+                    continue
+                raise HTTPError(400, f"Missing value for '{pname}'")
+            continue
+        filled[pname] = _convert(value, param.annotation, pname)
+    return filled
+
+
 class App(Router):
     """Complete web application (WSGI compatible: gunicorn, waitress, uWSGI...)."""
 
     def __init__(
         self,
-        name: str = "claide",
+        name: Optional[str] = None,
         *,
         static_folder: Optional[str] = "static",
         static_url: str = "/static",
@@ -572,8 +669,12 @@ class App(Router):
         lang: str = "en",
         max_content_length: Optional[int] = 16 * 1024 * 1024,
         base_path: str = "",
+        theme: bool = False,
+        auto_static: bool = True,
+        favicon: Optional[str] = None,
     ) -> None:
         super().__init__("")
+        name = name or "__main__"
         self.name = name
         if root is None:
             mod = sys.modules.get(name)
@@ -584,7 +685,8 @@ class App(Router):
         self.static_url = "/" + static_url.strip("/")
         self.secret_key = secret_key or os.environ.get("CLAIDE_SECRET_KEY")
         self.session_cookie = "claide_session"
-        self.title = title or (name if name not in ("__main__", "claide") else "Claide")
+        # Site name added after the <h1> in page titles ("Contact · My shop").
+        self.title = title
         self.lang = lang
         self.max_content_length = max_content_length
         # URL prefix when the site is not served at the domain root,
@@ -596,6 +698,56 @@ class App(Router):
         self._before: List[Callable] = []
         self._after: List[Callable] = []
         self._error_handlers: Dict[int, Callable] = {}
+        self.favicon = favicon
+        if theme:
+            from .theme import THEME_CSS  # local import: optional feature
+
+            self._assets.append(("style", THEME_CSS))
+        if auto_static:
+            self._link_static_files()
+
+    def _link_static_files(self) -> None:
+        """Link static/style.css, static/script.js and static/favicon.* automatically."""
+        folder = self.static_folder
+        if not folder or not os.path.isdir(folder):
+            return
+        if os.path.isfile(os.path.join(folder, "style.css")):
+            self.css(self.static("style.css"))
+        if os.path.isfile(os.path.join(folder, "script.js")):
+            self.js(self.static("script.js"))
+        if self.favicon is None:
+            for name in ("favicon.svg", "favicon.png", "favicon.ico"):
+                if os.path.isfile(os.path.join(folder, name)):
+                    self.favicon = self.static(name)
+                    break
+
+    def get_secret_key(self) -> str:
+        """Key that signs session cookies.
+
+        Uses ``App(secret_key=...)`` or the ``CLAIDE_SECRET_KEY`` environment
+        variable. Without one, a random key is generated once and kept in your
+        user cache folder (outside the project, so it is never committed).
+        """
+        if self.secret_key:
+            return self.secret_key
+        cache = os.environ.get("CLAIDE_CACHE_DIR") or os.path.join(
+            os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache"), "claide"
+        )
+        path = os.path.join(cache, "secrets", hashlib.sha256(self.root.encode()).hexdigest()[:16])
+        try:
+            with open(path, encoding="utf-8") as f:
+                self.secret_key = f.read().strip() or None
+        except OSError:
+            pass
+        if not self.secret_key:
+            self.secret_key = secrets.token_hex(32)
+            try:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(self.secret_key)
+            except OSError:
+                pass  # read-only system: the key only lives as long as the process
+        return self.secret_key
 
     # -- configuration -------------------------------------------------------
     def css(self, *hrefs: str) -> "App":
@@ -693,7 +845,7 @@ class App(Router):
         """Current request (in the current thread)."""
         return getattr(_local, "request", None)
 
-    def _call(self, func: Callable, request: Request, **kwargs: Any) -> Any:
+    def _call(self, func: Callable, request: Request, _fill: bool = False, **kwargs: Any) -> Any:
         try:
             sig = inspect.signature(func)
         except (TypeError, ValueError):
@@ -704,17 +856,22 @@ class App(Router):
         for pname in ("request", "req"):
             if pname in params and pname not in call_kwargs:
                 call_kwargs[pname] = request
+        if _fill:
+            call_kwargs.update(_params_from_request(func, params, call_kwargs, request))
         return func(**call_kwargs)
 
     def make_response(self, value: Any, request: Optional[Request] = None) -> Response:
         """Convert a route's return value into a ``Response``."""
         status, headers = 200, {}
         if isinstance(value, tuple):
-            value, *rest = value
-            if rest:
-                status = rest[0]
-            if len(rest) > 1:
-                headers = rest[1]
+            if 2 <= len(value) <= 3 and isinstance(value[1], int) and not isinstance(value[1], bool):
+                value, status, *rest = value  # (body, status) or (body, status, headers)
+                if rest:
+                    headers = rest[0]
+            else:
+                value = list(value)  # return h1(...), p(...)  -> several elements
+        if isinstance(value, list) and any(hasattr(v, "__html__") for v in value):
+            value = Page(None, *value)  # a list of elements is a page, not JSON
         if isinstance(value, Response):
             resp = value
             if status != 200:
@@ -730,7 +887,7 @@ class App(Router):
             resp = Response(value, status)
         elif hasattr(value, "__html__"):
             # Element, UITemplate, Fragment... -> wrapped in a Page
-            resp = Response(self.render_page(Page(self.title, value, lang=self.lang)), status)
+            resp = Response(self.render_page(Page(None, value)), status)
         elif inspect.isgenerator(value) or hasattr(value, "__iter__"):
             resp = Response(value, status)  # streaming
         else:
@@ -740,6 +897,16 @@ class App(Router):
         return resp
 
     def render_page(self, page: Page) -> str:
+        if page.title is None:
+            heading = _first_heading(page.body)
+            if heading and self.title and heading != self.title:
+                page.title = f"{heading} · {self.title}"
+            else:
+                page.title = heading or self.title or "Untitled"
+        if page.lang is None:
+            page.lang = self.lang
+        if page.favicon is None and self.favicon:
+            page.favicon = self.favicon
         if self._layout is not None:
             result = self._layout(page)
             if isinstance(result, Page):
@@ -795,7 +962,7 @@ class App(Router):
                     allowed |= route.methods
                     continue
                 request.params = params
-                return self.make_response(self._call(route.handler, request, **params), request)
+                return self.make_response(self._call(route.handler, request, _fill=True, **params), request)
             if allowed:
                 if request.method == "OPTIONS":
                     return Response(b"", 204, {"Allow": ", ".join(sorted(allowed | {"OPTIONS"}))})
@@ -831,8 +998,8 @@ class App(Router):
                 rv = self._call(hook, request, response=response)
                 if isinstance(rv, Response):
                     response = rv
-            if request._session is not None and request._session.modified and self.secret_key:
-                response.set_cookie(self.session_cookie, request._session.dump(self.secret_key), max_age=30 * 86400)
+            if request._session is not None and request._session.modified:
+                response.set_cookie(self.session_cookie, request._session.dump(self.get_secret_key()), max_age=30 * 86400)
             if request.method == "HEAD":
                 response.body = b""
             return response

@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # use the local
 
 from claide import App, Element, Page, UITemplate, __version__, tags as t  # noqa: E402
 
-from mdlite import render as render_markdown  # noqa: E402
+from claide.markdown import render as render_markdown  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 REPO = "https://github.com/kurodaki-dev/Claide"
@@ -116,31 +116,34 @@ def code_block(code: str, lang: str = "python", caption: str = "") -> Element:
 # Home
 # ---------------------------------------------------------------------------
 HELLO = '''
-from claide import App, Page, UITemplate, tags as t
+from claide import *
 
-app = App(__name__)
-button = UITemplate("0x-Sarthak/hungry-penguin-30")
-
-@app.route("/")
+@route("/")
 def home():
-    return Page(
-        "Home",
-        t.h1("Hello!"),
-        button.link("/contact"),
+    return h1("Hello!"), p("Welcome to my site.")
+
+@route("/contact")
+def contact(name: str = ""):
+    if request.method == "POST":
+        return h1(f"Thanks {name}!")
+    return h1("Contact"), form(
+        input_(name="name"),
+        button("Send"),
+        method="post",
     )
 
-app.run()
+run()
 '''
 
 FEATURES = [
-    ("Pages", "HTML is written with Python functions. Text is escaped for you, "
-              "and a component is just a function that returns elements."),
-    ("Routing", "Routes with typed parameters, forms, file uploads, JSON responses, "
-                "signed sessions, cookies and request hooks."),
+    ("Pages", "h1(), p(), div(), form()... every tag is a function. Return a few elements "
+              "and Claide builds the page, with a clean default style."),
+    ("Routing", "Form and URL values arrive as typed parameters. Sessions, cookies, uploads "
+                "and JSON responses work without setup."),
     ("Uiverse components", "Paste the URL of any element from uiverse.io or cssbuttons.io. "
                            "Its CSS is added to the page and kept out of the rest of your site."),
-    ("Your own files", "Link style.css and script.js on every page or only on one, "
-                       "or inline them. Files in static/ are served as is."),
+    ("Your own files", "Put style.css, script.js and a favicon in static/: they are used on "
+                       "every page without writing a line."),
     ("No dependencies", "Only the standard library. The development server reloads when "
                         "you save; any WSGI server runs it in production."),
     ("Static export", "app.build() writes plain HTML files you can host anywhere. "
@@ -176,9 +179,9 @@ def home():
         t.section(t.div(
             t.div(
                 t.h1("Websites in plain Python."),
-                t.p("Claide is a small module for building complete websites: pages, routes, "
-                    "forms, sessions and APIs, with your own CSS and JavaScript and any "
-                    "component from Uiverse.io.", class_="lead"),
+                t.p("Every HTML tag is a function, form fields arrive as parameters, and your "
+                    "CSS and JavaScript are linked by themselves. Routes, sessions, APIs and "
+                    "Uiverse.io components included, with no dependencies.", class_="lead"),
                 t.div(
                     t.a("Read the documentation", href=url("/docs/getting-started"), class_="button"),
                     t.a("Source on GitHub", href=REPO, class_="text-link"),
@@ -215,9 +218,9 @@ def home():
         t.section(t.div(
             t.div(
                 t.h2("Getting started"),
-                t.p(t.code("claide new"), " creates a project with a navigation bar, a contact form, "
-                    "a JSON route, a session counter and linked ", t.code("style.css"), " and ",
-                    t.code("script.js"), " files."),
+                t.p(t.code("claide new"), " creates a small project: a navigation bar, a contact "
+                    "form, a JSON route, a session counter and a ", t.code("static"), " folder for "
+                    "your CSS and JavaScript."),
                 t.p(t.a("Continue with the guide", href=url("/docs/getting-started"), class_="text-link")),
             ),
             code_block("pip install claide-web\nclaide new mysite\ncd mysite\npython app.py", "bash",

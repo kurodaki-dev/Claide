@@ -15,13 +15,25 @@ mysite/
 
 `app.static("img/logo.png")` returns the right URL (`/static/img/logo.png`, including the [base path](/docs/deployment) if there is one).
 
-## Linking CSS and JS on every page
+## Linked automatically
+
+If they exist, these files are used on every page without writing anything:
+
+| File | Becomes |
+|---|---|
+| `static/style.css` | `<link rel="stylesheet">` in the `<head>` |
+| `static/script.js` | `<script src>` at the end of the `<body>` |
+| `static/favicon.svg`, `.png` or `.ico` | the page icon |
+
+Turn this off with `App(auto_static=False)`.
+
+## Linking other files on every page
 
 ```python
-app = App(__name__)
-app.css(app.static("style.css"))
-app.js(app.static("script.js"))
+app = default_app()          # the app behind @route / run(), or your own App
 app.css("https://fonts.googleapis.com/css2?family=Inter&display=swap")
+app.css(app.static("print.css"))
+app.js(app.static("chart-setup.js"))
 ```
 
 ## On a single page
