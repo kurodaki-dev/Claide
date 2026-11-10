@@ -3,9 +3,9 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "claide"
+name = "claide-web"
 dynamic = ["version"]
-description = "Crée des sites web complets en Python : pages, routes, formulaires, API, sessions et composants Uiverse.io."
+description = "Build complete websites in Python: pages, routes, forms, APIs, sessions and Uiverse.io components."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -21,7 +21,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
     "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
-    "Natural Language :: French",
+    "Natural Language :: English",
 ]
 dependencies = []
 
@@ -37,6 +37,9 @@ claide = "claide.cli:main"
 
 [tool.hatch.version]
 path = "claide/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["claide"]
 
 [tool.hatch.build.targets.sdist]
 include = ["claide", "tests", "examples", "README.md", "LICENSE"]

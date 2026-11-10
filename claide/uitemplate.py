@@ -1,25 +1,25 @@
-"""Composants UI prêts à l'emploi, importés depuis Uiverse.io / cssbuttons.io.
+"""Ready-to-use UI components, imported from Uiverse.io / cssbuttons.io.
 
-cssbuttons.io redirige vers https://uiverse.io/buttons. Tous les éléments
-publiés sur Uiverse sont archivés (licence MIT) dans le dépôt GitHub
-officiel ``uiverse-io/galaxy`` : c'est là que Claide va les chercher.
+cssbuttons.io redirects to https://uiverse.io/buttons. Every element published
+on Uiverse is archived (MIT license) in the official GitHub repository
+``uiverse-io/galaxy``: that is where Claide fetches them from.
 
-Exemple ::
+Example ::
 
     from claide import UITemplate
 
-    # Avec l'identifiant "auteur/nom" visible dans l'URL Uiverse
-    bouton = UITemplate("0x-Sarthak/hungry-penguin-30")
+    # With the "author/name" id visible in the Uiverse URL
+    button = UITemplate("0x-Sarthak/hungry-penguin-30")
 
-    # ... ou directement avec l'URL copiée depuis le navigateur
-    bouton = UITemplate("https://uiverse.io/0x-Sarthak/hungry-penguin-30")
+    # ... or straight from the URL copied from your browser
+    button = UITemplate("https://uiverse.io/0x-Sarthak/hungry-penguin-30")
 
-    # ... ou en collant le code HTML/CSS à la main
-    bouton = UITemplate(html="<button class='btn'>OK</button>", css=".btn{...}")
+    # ... or by pasting the HTML/CSS code yourself
+    button = UITemplate(html="<button class='btn'>OK</button>", css=".btn{...}")
 
-    page.add(bouton.text("Contact Us", "Écris-moi").attrs(onclick="hello()"))
+    page.add(button.text("Contact Us", "Write me").attrs(onclick="hello()"))
 
-Le CSS du composant est automatiquement injecté dans le <head> de la page.
+The component's CSS is automatically injected into the page <head>.
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ __all__ = ["UITemplate", "UITemplateError", "CATEGORIES", "builtin_templates"]
 GALAXY_RAW = "https://raw.githubusercontent.com/uiverse-io/galaxy/main"
 TAILWIND_CDN = "https://cdn.tailwindcss.com"
 
-#: Dossiers du dépôt uiverse-io/galaxy (= catégories sur uiverse.io).
+#: Folders of the uiverse-io/galaxy repository (= categories on uiverse.io).
 CATEGORIES = [
     "Buttons", "Cards", "Checkboxes", "Forms", "Inputs", "loaders",
     "Notifications", "Patterns", "Radio-buttons", "Toggle-switches", "Tooltips",
@@ -66,7 +66,7 @@ _TAILWIND_HINT_RE = re.compile(
 
 
 class UITemplateError(Exception):
-    """Erreur de chargement d'un composant Uiverse."""
+    """Error while loading a Uiverse component."""
 
 
 def _cache_dir() -> str:
@@ -84,11 +84,11 @@ def _normalize_category(category: Optional[str]) -> Optional[str]:
     key = category.strip().lower().replace("-", "").replace("_", "").replace(" ", "")
     if key in _CATEGORY_ALIASES:
         return _CATEGORY_ALIASES[key]
-    raise UITemplateError(f"Catégorie inconnue : {category!r}. Choix possibles : {', '.join(CATEGORIES)}")
+    raise UITemplateError(f"Unknown category: {category!r}. Available: {', '.join(CATEGORIES)}")
 
 
 def parse_uiverse_id(ref: str) -> Tuple[str, str]:
-    """``"auteur/nom"``, ``"auteur_nom"`` ou une URL uiverse.io -> (auteur, nom)."""
+    """``"author/name"``, ``"author_name"`` or a uiverse.io URL -> (author, name)."""
     ref = ref.strip()
     ref = re.sub(r"^https?://(www\.)?(uiverse\.io|cssbuttons\.io)/", "", ref)
     ref = ref.split("?")[0].split("#")[0].strip("/")
@@ -96,8 +96,7 @@ def parse_uiverse_id(ref: str) -> Tuple[str, str]:
         ref = ref[:-5].rsplit("/", 1)[-1]
     if "/" in ref:
         author, name = ref.split("/", 1)
-        # Format d'URL avec catégorie : uiverse.io/buttons/auteur/nom n'existe pas,
-        # mais on tolère "Buttons/auteur_nom".
+        # Also accept the repository path form "Buttons/author_name".
         if "/" in name:
             author, name = name.split("/", 1)
         elif "_" in name and author.lower().replace("-", "") in _CATEGORY_ALIASES:
@@ -107,8 +106,8 @@ def parse_uiverse_id(ref: str) -> Tuple[str, str]:
         author, name = ref.split("_", 1)
         return author, name
     raise UITemplateError(
-        f"Identifiant Uiverse invalide : {ref!r}. Utilise 'auteur/nom' ou l'URL complète, "
-        "ex. 'https://uiverse.io/0x-Sarthak/hungry-penguin-30'."
+        f"Invalid Uiverse id: {ref!r}. Use 'author/name' or the full URL, "
+        "e.g. 'https://uiverse.io/0x-Sarthak/hungry-penguin-30'."
     )
 
 
@@ -120,14 +119,14 @@ def _download(url: str, timeout: float) -> Optional[str]:
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             return None
-        raise UITemplateError(f"Erreur HTTP {exc.code} en téléchargeant {url}") from exc
+        raise UITemplateError(f"HTTP error {exc.code} while downloading {url}") from exc
     except urllib.error.URLError as exc:
-        raise UITemplateError(f"Impossible de joindre GitHub ({exc.reason}). Vérifie ta connexion.") from exc
+        raise UITemplateError(f"Could not reach GitHub ({exc.reason}). Check your connection.") from exc
 
 
 def fetch_uiverse_source(author: str, name: str, category: Optional[str] = None,
                          use_cache: bool = True, timeout: float = 10.0) -> Tuple[str, str]:
-    """Télécharge le fichier source d'un composant. Renvoie (catégorie, source)."""
+    """Download a component source file. Returns (category, source)."""
     filename = f"{author}_{name}.html"
     cache = _cache_dir()
     if use_cache:
@@ -146,13 +145,13 @@ def fetch_uiverse_source(author: str, name: str, category: Optional[str] = None,
                 f.write(source)
             return cat, source
     raise UITemplateError(
-        f"Composant introuvable : {author}/{name}. Vérifie l'URL sur uiverse.io "
-        "(les éléments très récents peuvent mettre un peu de temps à être archivés)."
+        f"Component not found: {author}/{name}. Check the URL on uiverse.io "
+        "(very recent elements can take a while to be archived)."
     )
 
 
 def split_source(source: str) -> Tuple[str, str, str]:
-    """Sépare un fichier Uiverse en (html, css, js)."""
+    """Split a Uiverse file into (html, css, js)."""
     css = "\n".join(m.strip() for m in _STYLE_RE.findall(source))
     js = "\n".join(m.strip() for m in _SCRIPT_RE.findall(source))
     html = _SCRIPT_RE.sub("", _STYLE_RE.sub("", source))
@@ -161,14 +160,14 @@ def split_source(source: str) -> Tuple[str, str, str]:
 
 
 class UITemplate:
-    """Un composant UI (HTML + CSS [+ JS]) réutilisable.
+    """A reusable UI component (HTML + CSS [+ JS]).
 
-    ``UITemplate("auteur/nom")`` télécharge le composant depuis Uiverse.
-    ``UITemplate(html=..., css=...)`` crée un composant à partir de ton code.
-    ``UITemplate.builtin("glow")`` utilise un composant fourni avec Claide (hors-ligne).
+    ``UITemplate("author/name")`` downloads the component from Uiverse.
+    ``UITemplate(html=..., css=...)`` creates a component from your own code.
+    ``UITemplate.builtin("glow")`` uses a component bundled with Claide (offline).
 
-    Un ``UITemplate`` peut être ajouté directement dans une ``Page`` ou un
-    ``Element`` : son CSS est injecté automatiquement dans le <head>.
+    A ``UITemplate`` can be added directly to a ``Page`` or an ``Element``:
+    its CSS is automatically injected into the <head>.
     """
 
     def __init__(
@@ -191,7 +190,7 @@ class UITemplate:
 
         if ref is not None:
             if html is not None:
-                raise UITemplateError("Donne soit un identifiant Uiverse, soit html=..., pas les deux.")
+                raise UITemplateError("Pass either a Uiverse id or html=..., not both.")
             self.author, self.name = parse_uiverse_id(ref)
             self.category, source = fetch_uiverse_source(
                 self.author, self.name, self.category, use_cache=use_cache, timeout=timeout
@@ -203,44 +202,44 @@ class UITemplate:
             css = (file_css + "\n" + css).strip()
             js = (file_js + "\n" + js).strip()
         elif html is None:
-            raise UITemplateError("UITemplate a besoin d'un identifiant Uiverse ou de html=...")
+            raise UITemplateError("UITemplate needs a Uiverse id or html=...")
 
         self.html: str = html.strip()
         self.css: str = css.strip()
         self.js: str = js.strip()
         if tailwind is None:
-            # Les composants Uiverse sans <style> sont écrits en Tailwind CSS.
+            # Uiverse components without <style> are written with Tailwind CSS.
             tailwind = not self.css and bool(_TAILWIND_HINT_RE.search(" ".join(self.classes())))
         self.tailwind: bool = tailwind
         if scoped:
             self._scope_in_place()
 
-    # -- constructeurs alternatifs -------------------------------------------
+    # -- alternative constructors -------------------------------------------
     @classmethod
     def uiverse(cls, ref: str, **kwargs: Any) -> "UITemplate":
-        """Alias explicite : ``UITemplate.uiverse("auteur/nom")``."""
+        """Explicit alias: ``UITemplate.uiverse("author/name")``."""
         return cls(ref, **kwargs)
 
     @classmethod
     def from_source(cls, source: str, **kwargs: Any) -> "UITemplate":
-        """Crée un composant à partir d'un bloc HTML contenant éventuellement <style>/<script>."""
+        """Create a component from an HTML block that may contain <style>/<script>."""
         html, css, js = split_source(source)
         return cls(html=html, css=css, js=js, **kwargs)
 
     @classmethod
     def from_file(cls, path: str, **kwargs: Any) -> "UITemplate":
-        """Charge un composant depuis un fichier .html (HTML + <style> + <script>)."""
+        """Load a component from an .html file (HTML + <style> + <script>)."""
         with open(path, encoding="utf-8") as f:
             return cls.from_source(f.read(), **kwargs)
 
     @classmethod
     def builtin(cls, name: str, label: Optional[str] = None) -> "UITemplate":
-        """Composant intégré à Claide (fonctionne sans Internet). Voir ``builtin_templates()``."""
+        """Component bundled with Claide (works offline). See ``builtin_templates()``."""
         try:
             data = _BUILTINS[name]
         except KeyError:
             raise UITemplateError(
-                f"Composant intégré inconnu : {name!r}. Disponibles : {', '.join(_BUILTINS)}"
+                f"Unknown built-in component: {name!r}. Available: {', '.join(_BUILTINS)}"
             ) from None
         tpl = cls(html=data["html"], css=data["css"], js=data.get("js", ""))
         tpl.name = name
@@ -249,32 +248,32 @@ class UITemplate:
             tpl = tpl.text(data.get("label", "Button"), label)
         return tpl
 
-    # -- personnalisation ----------------------------------------------------
+    # -- customization -----------------------------------------------------
     def copy(self) -> "UITemplate":
         return copy.copy(self)
 
     def text(self, old: str, new: Optional[str] = None) -> "UITemplate":
-        """Remplace un texte visible : ``.text("Contact Us", "Écris-moi")``.
+        """Replace visible text: ``.text("Contact Us", "Write me")``.
 
-        Avec un seul argument, remplace le texte du premier nœud texte non vide.
-        Le nouveau texte est échappé (utilise ``.replace`` pour insérer du HTML).
+        With a single argument, replaces the first non-empty text node.
+        The new text is escaped (use ``.replace`` to insert HTML).
         """
         tpl = self.copy()
         if new is None:
             new = old
             match = re.search(r">\s*([^<>\s][^<>]*?)\s*<", tpl.html)
             if not match:
-                raise UITemplateError("Aucun texte trouvé dans ce composant.")
+                raise UITemplateError("No text found in this component.")
             start, end = match.span(1)
             tpl.html = tpl.html[:start] + escape(new) + tpl.html[end:]
             return tpl
         if old not in tpl.html:
-            raise UITemplateError(f"Texte {old!r} introuvable dans le composant.")
+            raise UITemplateError(f"Text {old!r} not found in the component.")
         tpl.html = tpl.html.replace(old, escape(new))
         return tpl
 
     def replace(self, old: str, new: str, css: bool = False) -> "UITemplate":
-        """Remplacement brut dans le HTML (ou dans le CSS si ``css=True``)."""
+        """Raw replacement in the HTML (or in the CSS when ``css=True``)."""
         tpl = self.copy()
         if css:
             tpl.css = tpl.css.replace(old, new)
@@ -283,14 +282,14 @@ class UITemplate:
         return tpl
 
     def attrs(self, **attrs: Any) -> "UITemplate":
-        """Ajoute des attributs à l'élément racine : ``.attrs(id="envoyer", onclick="go()")``.
+        """Add attributes to the root element: ``.attrs(id="send", onclick="go()")``.
 
-        ``class_`` est ajouté aux classes existantes.
+        ``class_`` is appended to the existing classes.
         """
         tpl = self.copy()
         match = re.search(r"<([a-zA-Z][\w-]*)([^>]*?)(/?)>", tpl.html)
         if not match:
-            raise UITemplateError("Impossible de trouver l'élément racine du composant.")
+            raise UITemplateError("Could not find the root element of the component.")
         tag, existing, selfclose = match.groups()
         extra_class = attrs.pop("class_", None) or attrs.pop("class", None)
         if extra_class:
@@ -304,14 +303,14 @@ class UITemplate:
         return tpl
 
     def link(self, href: str, **attrs: Any) -> "UITemplate":
-        """Entoure le composant d'un lien <a href=...>."""
+        """Wrap the component in an <a href=...> link."""
         tpl = self.copy()
         attrs.setdefault("style", "text-decoration:none;display:inline-block")
         tpl.html = f'<a href="{escape(href)}"{render_attrs(attrs)}>{tpl.html}</a>'
         return tpl
 
     def add_css(self, css: str) -> "UITemplate":
-        """Ajoute du CSS au composant (pour surcharger des couleurs, etc.)."""
+        """Add CSS to the component (to override colors, etc.)."""
         tpl = self.copy()
         tpl.css = (tpl.css + "\n" + css).strip()
         return tpl
@@ -321,9 +320,9 @@ class UITemplate:
         tpl.js = (tpl.js + "\n" + js).strip()
         return tpl
 
-    # -- isolation des classes CSS -------------------------------------------
+    # -- CSS class isolation -----------------------------------------------
     def classes(self) -> List[str]:
-        """Liste les classes CSS utilisées dans le HTML du composant."""
+        """List the CSS classes used in the component HTML."""
         found: List[str] = []
         for m in _CLASS_ATTR_RE.finditer(self.html):
             for c in m.group(3).split():
@@ -332,16 +331,16 @@ class UITemplate:
         return found
 
     def prefix(self, prefix: str) -> "UITemplate":
-        """Préfixe toutes les classes CSS (HTML + CSS) pour éviter les conflits."""
+        """Prefix every CSS class (HTML + CSS) to avoid conflicts."""
         tpl = self.copy()
         tpl._rename_classes({c: prefix + c for c in tpl.classes()})
         return tpl
 
     def scoped(self) -> "UITemplate":
-        """Comme ``prefix`` mais avec un préfixe unique calculé automatiquement.
+        """Like ``prefix`` but with an automatically computed unique prefix.
 
-        Utile quand tu mets deux composants Uiverse qui utilisent tous les deux
-        ``.button`` sur la même page.
+        Useful when two Uiverse components on the same page both use
+        ``.button``.
         """
         tpl = self.copy()
         tpl._scope_in_place()
@@ -360,7 +359,7 @@ class UITemplate:
             return f"{m.group(1)}{m.group(2)}{' '.join(names)}{m.group(2)}"
 
         self.html = _CLASS_ATTR_RE.sub(fix_attr, self.html)
-        # Remplace les plus longs d'abord pour éviter que ".btn" touche ".btn-icon".
+        # Replace longest names first so ".btn" does not affect ".btn-icon".
         for old in sorted(mapping, key=len, reverse=True):
             pattern = re.compile(r"\." + re.escape(old) + r"(?![\w-])")
             self.css = pattern.sub("." + mapping[old], self.css)
@@ -368,7 +367,7 @@ class UITemplate:
                 self.js = re.sub(r"(['\"`.])" + re.escape(old) + r"(?![\w-])",
                                  lambda m, new=mapping[old]: m.group(1) + new, self.js)
 
-    # -- rendu ---------------------------------------------------------------
+    # -- render ---------------------------------------------------------------
     @property
     def credit(self) -> str:
         if self.author and self.author != "claide":
@@ -397,8 +396,8 @@ class UITemplate:
         return f"<UITemplate {who} category={self.category!r}>"
 
     def preview(self, path: Optional[str] = None) -> str:
-        """Génère une page HTML de prévisualisation et renvoie son chemin."""
-        from .page import Page  # import local pour éviter un cycle
+        """Generate an HTML preview page and return its path."""
+        from .page import Page  # local import to avoid a cycle
 
         page = Page(repr(self), body_attrs={
             "style": "min-height:100vh;display:grid;place-items:center;background:#f4f4f5;margin:0"
@@ -409,12 +408,12 @@ class UITemplate:
 
 
 def builtin_templates() -> List[str]:
-    """Noms des composants intégrés utilisables avec ``UITemplate.builtin(nom)``."""
+    """Names of the built-in components usable with ``UITemplate.builtin(name)``."""
     return list(_BUILTINS)
 
 
 # ---------------------------------------------------------------------------
-# Composants intégrés (création originale Claide, licence MIT)
+# Built-in components (original Claide designs, MIT license)
 # ---------------------------------------------------------------------------
 _BUILTINS: Dict[str, Dict[str, str]] = {
     "gradient": {
@@ -469,7 +468,7 @@ _BUILTINS: Dict[str, Dict[str, str]] = {
     },
     "spinner": {
         "label": "",
-        "html": '<div class="cl-spinner" role="status" aria-label="Chargement"></div>',
+        "html": '<div class="cl-spinner" role="status" aria-label="Loading"></div>',
         "css": """.cl-spinner {
   width: 42px; height: 42px; border-radius: 50%;
   border: 4px solid #e5e7eb; border-top-color: #6366f1; animation: cl-spin .8s linear infinite;
@@ -492,8 +491,8 @@ _BUILTINS: Dict[str, Dict[str, str]] = {
 .cl-toggle input:checked + span::before { transform: translateX(24px); }""",
     },
     "card": {
-        "label": "Titre",
-        "html": '<div class="cl-card"><h3>Titre</h3><p>Description de la carte.</p></div>',
+        "label": "Title",
+        "html": '<div class="cl-card"><h3>Title</h3><p>Card description.</p></div>',
         "css": """.cl-card {
   max-width: 320px; padding: 1.5rem; border-radius: 16px; background: #fff;
   font-family: system-ui, sans-serif; box-shadow: 0 10px 30px -12px #0004;

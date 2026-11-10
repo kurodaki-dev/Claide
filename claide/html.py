@@ -1,4 +1,4 @@
-"""Construction de HTML en Python pur.
+"""Build HTML in pure Python.
 
     >>> from claide import tags as t
     >>> str(t.div(t.h1("Salut"), class_="hero"))
@@ -12,34 +12,36 @@ from typing import Any, Iterable, Iterator, List, Tuple
 
 __all__ = ["Element", "Fragment", "Raw", "raw", "escape", "tags", "render_node", "iter_assets"]
 
-#: Balises auto-fermantes (pas de contenu, pas de balise fermante).
+#: Void elements (no content, no closing tag).
 VOID_TAGS = {
     "area", "base", "br", "col", "embed", "hr", "img", "input",
     "link", "meta", "param", "source", "track", "wbr",
 }
 
-#: Un "asset" est un tuple (type, contenu). Types possibles :
-#:   "css"    -> lien vers une feuille de style (href)
-#:   "style"  -> CSS inline (contenu d'une balise <style>)
-#:   "js"     -> lien vers un script (src)
-#:   "script" -> JavaScript inline
+#: An "asset" is a (kind, content) tuple. Kinds:
+#:   "css"     -> link to a stylesheet (href)
+#:   "style"   -> inline CSS (content of a <style> tag)
+#:   "js"      -> link to a script (src), loaded at the end of <body>
+#:   "js-head" -> link to a script loaded in <head>
+#:   "module"  -> link to an ES module script
+#:   "script"  -> inline JavaScript
 Asset = Tuple[str, str]
 
 
 def escape(value: Any) -> str:
-    """Échappe une valeur pour l'insérer dans du HTML."""
+    """Escape a value so it can be safely inserted into HTML."""
     return _html.escape(str(value), quote=True)
 
 
 class Raw(str):
-    """Chaîne HTML insérée telle quelle (non échappée)."""
+    """HTML string inserted as-is (not escaped)."""
 
     def __html__(self) -> str:
         return str(self)
 
 
 def raw(value: str) -> Raw:
-    """Marque une chaîne comme du HTML sûr, qui ne sera pas échappé."""
+    """Mark a string as safe HTML that will not be escaped."""
     return Raw(value)
 
 
@@ -85,7 +87,7 @@ def _flatten(children: Iterable[Any]) -> Iterator[Any]:
 
 
 def render_node(node: Any) -> str:
-    """Transforme n'importe quel nœud (Element, UITemplate, str, nombre...) en HTML."""
+    """Render any node (Element, UITemplate, str, number...) to HTML."""
     if node is None:
         return ""
     if hasattr(node, "__html__"):
@@ -94,18 +96,18 @@ def render_node(node: Any) -> str:
 
 
 def iter_assets(node: Any) -> Iterator[Asset]:
-    """Parcourt un nœud et renvoie tous les assets (CSS/JS) qu'il nécessite."""
+    """Walk a node and yield every asset (CSS/JS) it needs."""
     getter = getattr(node, "claide_assets", None)
     if getter is not None:
         yield from getter()
 
 
 class Element:
-    """Un élément HTML.
+    """An HTML element.
 
-    Les attributs sont passés en mots-clés : ``class_`` devient ``class``,
-    ``data_id`` devient ``data-id``. ``True`` produit un attribut booléen et
-    ``None``/``False`` le supprime. ``style`` accepte un dict.
+    Attributes are passed as keyword arguments: ``class_`` becomes ``class``,
+    ``data_id`` becomes ``data-id``. ``True`` renders a boolean attribute and
+    ``None``/``False`` removes it. ``style`` accepts a dict.
     """
 
     def __init__(self, tag: str | None, *children: Any, **attrs: Any) -> None:
@@ -114,16 +116,16 @@ class Element:
         self.attrs: dict = attrs
         self._assets: List[Asset] = []
 
-    # -- construction ------------------------------------------------------
+    # -- building ----------------------------------------------------------
     def add(self, *children: Any) -> "Element":
-        """Ajoute des enfants et renvoie l'élément (chaînable)."""
+        """Append children and return the element (chainable)."""
         self.children.extend(_flatten(children))
         return self
 
     __iadd__ = lambda self, other: self.add(other)  # noqa: E731
 
     def __call__(self, *children: Any, **attrs: Any) -> "Element":
-        """``div(class_="x")("contenu")`` : ajoute enfants et attributs."""
+        """``div(class_="x")("content")``: add children and attributes."""
         self.attrs.update(attrs)
         return self.add(*children)
 
@@ -140,12 +142,12 @@ class Element:
         return self
 
     def with_css(self, css: str) -> "Element":
-        """Attache du CSS inline à cet élément (injecté dans le <head> de la page)."""
+        """Attach inline CSS to this element (injected into the page <head>)."""
         self._assets.append(("style", css))
         return self
 
     def with_js(self, js: str) -> "Element":
-        """Attache du JavaScript inline à cet élément (injecté en fin de <body>)."""
+        """Attach inline JavaScript to this element (injected at the end of <body>)."""
         self._assets.append(("script", js))
         return self
 
@@ -157,7 +159,7 @@ class Element:
         self._assets.append(("js", src))
         return self
 
-    # -- rendu -------------------------------------------------------------
+    # -- render -------------------------------------------------------------
     def claide_assets(self) -> Iterator[Asset]:
         yield from self._assets
         for child in self.children:
@@ -182,14 +184,14 @@ class Element:
 
 
 class Fragment(Element):
-    """Groupe d'éléments sans balise englobante."""
+    """Group of nodes without a wrapping tag."""
 
     def __init__(self, *children: Any) -> None:
         super().__init__(None, *children)
 
 
 class _Tags:
-    """Fabrique de balises : ``tags.div(...)``, ``tags.my_widget(...)`` -> ``<my-widget>``."""
+    """Tag factory: ``tags.div(...)``, ``tags.my_widget(...)`` -> ``<my-widget>``."""
 
     def __getattr__(self, name: str):
         if name.startswith("__"):
@@ -200,7 +202,7 @@ class _Tags:
             return Element(tag, *children, **attrs)
 
         factory.__name__ = name
-        factory.__doc__ = f"Crée un élément <{tag}>."
+        factory.__doc__ = f"Create a <{tag}> element."
         return factory
 
     def __call__(self, tag: str, *children: Any, **attrs: Any) -> Element:

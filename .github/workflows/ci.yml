@@ -1,4 +1,4 @@
-name: CI & publication PyPI
+name: CI & PyPI publish
 
 on:
   push:
@@ -21,22 +21,36 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest -q
 
-  publish:
-    # Publie automatiquement à chaque push sur main (ou tag v*).
-    # Si la version dans claide/__init__.py existe déjà sur PyPI, rien n'est envoyé :
-    # il suffit donc d'augmenter __version__ pour publier une nouvelle release.
-    needs: tests
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+  build:
     runs-on: ubuntu-latest
-    environment: pypi
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install build
+      - run: pip install build twine
       - run: python -m build
-      - name: Publication sur PyPI
+      - name: Check the package metadata
+        run: twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    # Publishes automatically on every push to main (or a v* tag).
+    # If the version in claide/__init__.py already exists on PyPI, nothing is
+    # uploaded: bump __version__ to release a new version.
+    needs: [tests, build]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}

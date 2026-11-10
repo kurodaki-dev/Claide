@@ -1,4 +1,4 @@
-"""Une page HTML complète (<!DOCTYPE html> ... </html>)."""
+"""A complete HTML page (<!DOCTYPE html> ... </html>)."""
 
 from __future__ import annotations
 
@@ -11,14 +11,14 @@ __all__ = ["Page"]
 
 
 class Page:
-    """Page HTML complète.
+    """Complete HTML page.
 
-    Exemple ::
+    Example ::
 
-        page = Page("Accueil", description="Mon site")
+        page = Page("Home", description="My website")
         page.css("/static/style.css")
         page.js("/static/script.js")
-        page.add(tags.h1("Bienvenue !"))
+        page.add(tags.h1("Welcome!"))
         html = page.render()
     """
 
@@ -26,7 +26,7 @@ class Page:
         self,
         title: str = "",
         *children: Any,
-        lang: str = "fr",
+        lang: str = "en",
         charset: str = "utf-8",
         description: Optional[str] = None,
         favicon: Optional[str] = None,
@@ -46,64 +46,64 @@ class Page:
         self.metas: List[dict] = []
         self._assets: List[Asset] = []
 
-    # -- contenu -------------------------------------------------------------
+    # -- content -------------------------------------------------------------
     def add(self, *children: Any) -> "Page":
-        """Ajoute des éléments dans le <body>."""
+        """Append elements to the <body>."""
         self.body.add(*children)
         return self
 
     def head(self, *elements: Any) -> "Page":
-        """Ajoute des éléments bruts dans le <head>."""
+        """Append raw elements to the <head>."""
         self.head_extra.extend(elements)
         return self
 
     def meta(self, **attrs: Any) -> "Page":
-        """Ajoute une balise <meta>, ex. ``page.meta(property="og:title", content="...")``."""
+        """Add a <meta> tag, e.g. ``page.meta(property="og:title", content="...")``."""
         self.metas.append(attrs)
         return self
 
     # -- assets --------------------------------------------------------------
     def css(self, *hrefs: str) -> "Page":
-        """Lie une ou plusieurs feuilles de style (``<link rel="stylesheet">``)."""
+        """Link one or more stylesheets (``<link rel="stylesheet">``)."""
         self._assets.extend(("css", h) for h in hrefs)
         return self
 
     stylesheet = css
 
     def js(self, *srcs: str) -> "Page":
-        """Lie un ou plusieurs scripts (``<script src defer>``)."""
+        """Link one or more scripts (loaded at the end of <body>)."""
         self._assets.extend(("js", s) for s in srcs)
         return self
 
     script_src = js
 
     def style(self, css: str) -> "Page":
-        """Ajoute du CSS inline dans une balise <style>."""
+        """Add inline CSS in a <style> tag."""
         self._assets.append(("style", css))
         return self
 
     def script(self, code: str) -> "Page":
-        """Ajoute du JavaScript inline en fin de <body>."""
+        """Add inline JavaScript at the end of <body>."""
         self._assets.append(("script", code))
         return self
 
     def style_file(self, path: str) -> "Page":
-        """Lit un fichier .css local et l'intègre directement dans la page."""
+        """Read a local .css file and inline it in the page."""
         with open(path, encoding="utf-8") as f:
             return self.style(f.read())
 
     def script_file(self, path: str) -> "Page":
-        """Lit un fichier .js local et l'intègre directement dans la page."""
+        """Read a local .js file and inline it in the page."""
         with open(path, encoding="utf-8") as f:
             return self.script(f.read())
 
     def use(self, *templates: Any) -> "Page":
-        """Charge le CSS/JS de composants (ex. UITemplate) sans les afficher."""
+        """Load the CSS/JS of components (e.g. UITemplate) without displaying them."""
         for t in templates:
             self._assets.extend(iter_assets(t))
         return self
 
-    # -- rendu ---------------------------------------------------------------
+    # -- render ---------------------------------------------------------------
     def collect_assets(self, extra: Iterable[Asset] = ()) -> List[Asset]:
         seen = set()
         result: List[Asset] = []
@@ -159,7 +159,7 @@ class Page:
     __str__ = render
 
     def save(self, path: str) -> str:
-        """Écrit la page dans un fichier .html et renvoie le chemin."""
+        """Write the page to an .html file and return its path."""
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             f.write(self.render())

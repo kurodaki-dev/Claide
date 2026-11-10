@@ -2,8 +2,8 @@ from claide import Element, Page, raw, tags as t
 
 
 def test_tags_and_attrs():
-    el = t.div(t.h1("Salut"), class_="hero", data_id=3, hidden=True, disabled=False)
-    assert str(el) == '<div class="hero" data-id="3" hidden><h1>Salut</h1></div>'
+    el = t.div(t.h1("Hello"), class_="hero", data_id=3, hidden=True, disabled=False)
+    assert str(el) == '<div class="hero" data-id="3" hidden><h1>Hello</h1></div>'
 
 
 def test_escape_and_raw():
@@ -27,4 +27,4 @@ def test_page_assets_dedup():
     assert html.count('href="/s.css"') == 1
     assert html.count(".a{}") == 1
     assert html.index('src="/s.js"') > html.index("<body")
-    assert "<title>T</title>" in html and 'lang="fr"' in html
+    assert "<title>T</title>" in html and 'lang="en"' in html
