@@ -1,7 +1,7 @@
 {
   "name": "claide-ide",
   "productName": "Claide IDE",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Write, run and preview Claide websites. Python runs inside the app.",
   "author": "kurodaki-dev",
   "license": "MIT",

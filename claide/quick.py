@@ -54,18 +54,22 @@ def route(path: str, methods: Iterable[str] = ("GET", "POST")) -> Callable:
 
 
 def get(path: str) -> Callable:
+    """Register a route that only answers GET requests (pages, JSON APIs)."""
     return _register(path, ("GET",))
 
 
 def post(path: str) -> Callable:
+    """Register a route that only answers POST requests (forms, API calls)."""
     return _register(path, ("POST",))
 
 
 def put(path: str) -> Callable:
+    """Register a route that only answers PUT requests."""
     return _register(path, ("PUT",))
 
 
 def delete(path: str) -> Callable:
+    """Register a route that only answers DELETE requests."""
     return _register(path, ("DELETE",))
 
 

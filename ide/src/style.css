@@ -13,6 +13,17 @@
   --inverse-bg: #141414;
   --inverse-text: #ffffff;
   --overlay: rgba(0, 0, 0, .28);
+  /* code colors */
+  --tok-keyword: #b3266f;
+  --tok-function: #2556c4;
+  --tok-class: #9a5b00;
+  --tok-builtin: #9a5b00;
+  --tok-string: #2c7a2c;
+  --tok-comment: #8a8a8a;
+  --tok-number: #7038c8;
+  --tok-decorator: #7038c8;
+  --tok-property: #0d7486;
+  --tok-tag: #2556c4;
   color-scheme: light;
 }
 [data-theme="dark"] {
@@ -29,6 +40,16 @@
   --inverse-bg: #ececec;
   --inverse-text: #141414;
   --overlay: rgba(0, 0, 0, .55);
+  --tok-keyword: #f07bb4;
+  --tok-function: #7fb0ff;
+  --tok-class: #f2bd6b;
+  --tok-builtin: #f2bd6b;
+  --tok-string: #92d192;
+  --tok-comment: #8a8a8a;
+  --tok-number: #c3a6ff;
+  --tok-decorator: #c3a6ff;
+  --tok-property: #6fd3e0;
+  --tok-tag: #7fb0ff;
   color-scheme: dark;
 }
 
