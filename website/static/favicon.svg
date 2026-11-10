@@ -1,1 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="3" fill="#1c1b19"/><path d="M21.5 11.2a7 7 0 1 0 0 9.6" fill="none" stroke="#f6f4ee" stroke-width="3"/><rect x="22" y="19" width="4" height="4" fill="#b8431f"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Claide">
+  <title>Claide</title>
+  <defs>
+    <linearGradient id="claide-gradient" x1="16" y1="4" x2="48" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#dc1f26"/>
+      <stop offset=".5" stop-color="#f2461c"/>
+      <stop offset="1" stop-color="#fb9a3c"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#claide-gradient)">
+    <path d="M3 14C11 3 21 2 32 9S53 17 61 6C55 21.4 44 24.25 32 17.5S11 10.275 3 14Z"/>
+    <path d="M3 31C11 20 21 19 32 26S53 34 61 23C55 38.4 44 41.25 32 34.5S11 27.275 3 31Z"/>
+    <path d="M3 48C11 37 21 36 32 43S53 51 61 40C55 55.4 44 58.25 32 51.5S11 44.275 3 48Z"/>
+  </g>
+</svg>

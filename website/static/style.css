@@ -71,11 +71,13 @@ code, pre, kbd { font-family: var(--mono); }
 
 /* Header */
 .site-header { border-bottom: 1px solid var(--rule); background: var(--paper); position: sticky; top: 0; z-index: 20; }
-.header-inner { display: flex; align-items: baseline; gap: 14px; padding: 18px 0 16px; }
+.header-inner { display: flex; align-items: center; gap: 14px; padding: 18px 0 16px; }
 .wordmark { font: 500 1.15rem/1 var(--mono); letter-spacing: -.02em; color: var(--ink); text-decoration: none; }
-.wordmark::after { content: "."; color: var(--accent); }
+.site-header .wordmark { display: inline-flex; align-items: center; gap: 9px; }
+.site-header .wordmark img { display: block; }
+.site-footer .wordmark::after { content: "."; color: var(--accent); }
 .site-header .wordmark:hover { color: var(--ink); }
-.version { font: .78rem var(--mono); color: var(--ink-3); }
+.version { font: .78rem var(--mono); color: var(--ink-3); position: relative; top: 1px; }
 .site-header nav { margin-left: auto; }
 .site-header ul { display: flex; flex-wrap: wrap; gap: 4px 26px; margin: 0; padding: 0; list-style: none; }
 .site-header nav a { color: var(--ink-2); text-decoration: none; font-size: .94rem; }
