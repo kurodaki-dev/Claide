@@ -63,6 +63,13 @@ cd mysite
 python app.py
 ```
 
+## Claide IDE
+
+An application to write, run and preview Claide sites, for **Windows** (`.exe`), **Linux**
+(`.AppImage`, `.deb`) and **Android** (`.apk`). Python runs inside the app (WebAssembly), so
+nothing else needs to be installed. Download it from the
+[releases page](https://github.com/kurodaki-dev/Claide/releases/latest); the source is in [`ide/`](ide/).
+
 ## Uiverse / cssbuttons.io components
 
 Copy the URL of an element on uiverse.io (cssbuttons.io redirects to uiverse.io/buttons):

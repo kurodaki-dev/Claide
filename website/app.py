@@ -48,6 +48,7 @@ SUMMARIES = {
     "cli": "The claide command: new, run, build and ui.",
     "deployment": "Run in production with WSGI, export a static site, deploy to GitHub Pages.",
     "testing": "Test routes, forms and APIs with the built-in test client.",
+    "ide": "The Claide IDE for Windows, Linux and Android: edit, run and preview without installing Python.",
 }
 
 
@@ -69,7 +70,8 @@ DOCS = [Doc(p) for p in sorted((HERE / "content").glob("*.md"))]
 # Layout
 # ---------------------------------------------------------------------------
 def header(active: str = "") -> Element:
-    links = [("Documentation", url("/docs"), "docs"), ("Components", url("/#components"), ""),
+    links = [("Documentation", url("/docs"), "docs"), ("IDE", url("/docs/ide"), "ide"),
+             ("Components", url("/#components"), ""),
              ("GitHub", REPO, ""), ("PyPI", PYPI, "")]
     return t.header(
         t.div(
@@ -287,7 +289,7 @@ def make_doc_view(index: int):
                 class_="toc",
             ) if doc.toc else None,
             class_="wrap docs",
-        ), active="docs", description=doc.summary)
+        ), active="ide" if doc.slug == "ide" else "docs", description=doc.summary)
 
     view.__name__ = f"doc_{doc.slug.replace('-', '_')}"
     return view

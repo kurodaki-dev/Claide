@@ -1,0 +1,110 @@
+name: Claide IDE (Windows, Linux, Android)
+
+on:
+  push:
+    branches: [main]
+    paths: ["ide/**", "claide/**", ".github/workflows/ide.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: win
+            files: |
+              ide/release/*.exe
+          - os: ubuntu-latest
+            target: linux
+            files: |
+              ide/release/*.AppImage
+              ide/release/*.deb
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: ide
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ide/package-lock.json
+      - run: npm ci
+      - run: npm run dist:${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ide-${{ matrix.target }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ide
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ide/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run build
+      - name: Create the Android project
+        run: npx cap add android
+      - name: Generate the app icon and splash screen
+        run: npx --yes @capacitor/assets@4.0.0 generate --android --assetPath resources
+      - name: Build the APK
+        working-directory: ide/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Rename the APK
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release/Claide-IDE-$VERSION.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ide-android
+          path: ide/release/*.apk
+          if-no-files-found: error
+
+  release:
+    needs: [desktop, android]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Read the version
+        id: version
+        run: echo "version=$(node -p "require('./ide/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ide-v${{ steps.version.outputs.version }}
+          name: Claide IDE ${{ steps.version.outputs.version }}
+          make_latest: true
+          files: artifacts/*
+          body: |
+            Write, run and preview Claide websites. Python runs inside the app: nothing else to install.
+
+            | Platform | File |
+            |---|---|
+            | Windows | `Claide-IDE-Setup-*.exe` (installer) or `Claide-IDE-*-portable.exe` (no installation) |
+            | Linux | `*.AppImage` (any distribution: `chmod +x` then run) or `*.deb` (Debian, Ubuntu) |
+            | Android | `Claide-IDE-*.apk` (allow installing apps from this source when asked) |
+
+            Built from ${{ github.sha }}.
