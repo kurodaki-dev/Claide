@@ -571,6 +571,7 @@ class App(Router):
         title: Optional[str] = None,
         lang: str = "en",
         max_content_length: Optional[int] = 16 * 1024 * 1024,
+        base_path: str = "",
     ) -> None:
         super().__init__("")
         self.name = name
@@ -586,6 +587,9 @@ class App(Router):
         self.title = title or (name if name not in ("__main__", "claide") else "Claide")
         self.lang = lang
         self.max_content_length = max_content_length
+        # URL prefix when the site is not served at the domain root,
+        # e.g. "/MyRepo" for a GitHub Pages project site.
+        self.base_path = "/" + base_path.strip("/") if base_path.strip("/") else ""
         self.debug = False
         self._assets: List[Asset] = []
         self._layout: Optional[Callable[[Page], Any]] = None
@@ -620,7 +624,17 @@ class App(Router):
 
     def static(self, filename: str) -> str:
         """URL of a static file: ``app.static("style.css")`` -> ``/static/style.css``."""
-        return f"{self.static_url}/{filename.lstrip('/')}"
+        return self.url(f"{self.static_url}/{filename.lstrip('/')}")
+
+    def url(self, path: str = "/") -> str:
+        """Absolute URL of an internal path, including ``base_path``.
+
+        ``App(base_path="/Claide").url("/docs")`` -> ``/Claide/docs``.
+        External URLs and anchors are returned unchanged.
+        """
+        if not path.startswith("/") or path.startswith("//") or not self.base_path:
+            return path
+        return self.base_path + (path if path != "/" else "/")
 
     def layout(self, func: Callable[[Page], Any]) -> Callable:
         """Decorator: function called on every Page before rendering (navbar, footer...).
@@ -670,7 +684,7 @@ class App(Router):
             return self.static(params.pop("filename"))
         for r in self.routes:
             if r.name == name:
-                return r.build(**params)
+                return self.url(r.build(**params))
         raise KeyError(f"No route named {name!r}")
 
     # -- handling ------------------------------------------------------------
@@ -809,6 +823,8 @@ class App(Router):
 
     def handle(self, request: Request) -> Response:
         _local.request = request
+        if self.base_path and (request.path == self.base_path or request.path.startswith(self.base_path + "/")):
+            request.path = request.path[len(self.base_path):] or "/"
         try:
             response = self.dispatch(request)
             for hook in self._after:

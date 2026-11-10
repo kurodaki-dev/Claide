@@ -159,6 +159,109 @@ def split_source(source: str) -> Tuple[str, str, str]:
     return html, css, js
 
 
+_AT_GROUP = ("@media", "@supports", "@container", "@layer", "@document", "@scope")
+_COMMENT_RE = re.compile(r"/\*.*?\*/", re.S)
+
+
+def _matching_brace(css: str, start: int) -> int:
+    """Index of the ``}`` closing the ``{`` at ``start`` (ignores strings and comments)."""
+    depth, i, quote = 0, start, ""
+    while i < len(css):
+        ch = css[i]
+        if quote:
+            if ch == "\\":
+                i += 1
+            elif ch == quote:
+                quote = ""
+        elif css.startswith("/*", i):
+            end = css.find("*/", i + 2)
+            i = len(css) if end == -1 else end + 1
+        elif ch in "\"'":
+            quote = ch
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return len(css) - 1
+
+
+def _split_selectors(prelude: str) -> List[str]:
+    parts, depth, cur = [], 0, ""
+    for ch in prelude:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    parts.append(cur)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def _scope_selector(sel: str, scope: str) -> str:
+    m = re.match(r"(:root|html|body)(?![\w-])", sel)
+    if m:
+        rest = sel[m.end():]
+        return f".{scope}{rest}"
+    return f".{scope} {sel}"
+
+
+def _scope_rules(css: str, scope: str, keyframes: Dict[str, str]) -> str:
+    out: List[str] = []
+    i = 0
+    while i < len(css):
+        brace = css.find("{", i)
+        semi = css.find(";", i)
+        if brace == -1:
+            out.append(css[i:])
+            break
+        prelude = css[i:brace]
+        lead = re.match(r"(\s|/\*.*?\*/)*", prelude, re.S)
+        lead_text = lead.group(0) if lead else ""
+        head = prelude[len(lead_text):]
+        if head.startswith("@") and semi != -1 and semi < brace:
+            out.append(css[i:semi + 1])  # @import ...; @charset ...;
+            i = semi + 1
+            continue
+        end = _matching_brace(css, brace)
+        body = css[brace + 1:end]
+        head_clean = _COMMENT_RE.sub("", head).strip()
+        if head_clean.startswith(_AT_GROUP):
+            out.append(f"{lead_text}{head}{{{_scope_rules(body, scope, keyframes)}}}")
+        elif re.match(r"@(-\w+-)?keyframes\b", head_clean):
+            name = head_clean.split(None, 1)[1].strip() if " " in head_clean else ""
+            new_head = head.replace(name, keyframes.get(name, name), 1) if name else head
+            out.append(f"{lead_text}{new_head}{{{body}}}")
+        elif head_clean.startswith("@"):
+            out.append(css[i:end + 1])  # @font-face, @page... copied as is
+        else:
+            selectors = ", ".join(_scope_selector(sel, scope) for sel in _split_selectors(head_clean))
+            out.append(f"{lead_text}{selectors} {{{body}}}")
+        i = end + 1
+    return "".join(out)
+
+
+def scope_css(css: str, scope: str) -> str:
+    """Prefix every selector of ``css`` with ``.scope`` and rename its @keyframes."""
+    names = re.findall(r"@(?:-\w+-)?keyframes\s+([\w-]+)", css)
+    keyframes = {n: f"{scope}-{n}" for n in names}
+    scoped = _scope_rules(css, scope, keyframes)
+    if keyframes:
+        pattern = re.compile(r"(?<![\w-])(" + "|".join(map(re.escape, keyframes)) + r")(?![\w-])")
+
+        def fix_decl(m: "re.Match[str]") -> str:
+            return m.group(1) + pattern.sub(lambda k: keyframes[k.group(1)], m.group(2))
+
+        scoped = re.sub(r"(animation(?:-name)?\s*:)([^;}]*)", fix_decl, scoped)
+    return scoped
+
+
 class UITemplate:
     """A reusable UI component (HTML + CSS [+ JS]).
 
@@ -187,6 +290,7 @@ class UITemplate:
         self.name: Optional[str] = None
         self.category: Optional[str] = _normalize_category(category)
         self.tags: List[str] = []
+        self.scope: Optional[str] = None  # wrapper class set by .scoped()
 
         if ref is not None:
             if html is not None:
@@ -312,6 +416,8 @@ class UITemplate:
     def add_css(self, css: str) -> "UITemplate":
         """Add CSS to the component (to override colors, etc.)."""
         tpl = self.copy()
+        if tpl.scope:
+            css = scope_css(css, tpl.scope)
         tpl.css = (tpl.css + "\n" + css).strip()
         return tpl
 
@@ -337,18 +443,25 @@ class UITemplate:
         return tpl
 
     def scoped(self) -> "UITemplate":
-        """Like ``prefix`` but with an automatically computed unique prefix.
+        """Isolate the component's CSS from the rest of the page.
 
-        Useful when two Uiverse components on the same page both use
-        ``.button``.
+        The component is rendered inside an invisible wrapper
+        (``display: contents``) with a unique class, every CSS selector is
+        prefixed with that class and ``@keyframes`` names are renamed. Rules
+        such as ``button { ... }`` or ``#timer { ... }`` then only apply to
+        this component, and two components that both use ``.button`` no
+        longer conflict.
         """
         tpl = self.copy()
         tpl._scope_in_place()
         return tpl
 
     def _scope_in_place(self) -> None:
-        digest = hashlib.sha1((self.html + self.css).encode("utf-8")).hexdigest()[:6]
-        self._rename_classes({c: f"u{digest}-{c}" for c in self.classes()})
+        if self.scope or self.tailwind:
+            return
+        digest = hashlib.sha1((self.html + self.css + self.js).encode("utf-8")).hexdigest()[:6]
+        self.scope = f"u{digest}"
+        self.css = scope_css(self.css, self.scope)
 
     def _rename_classes(self, mapping: Dict[str, str]) -> None:
         if not mapping or self.tailwind:
@@ -384,10 +497,12 @@ class UITemplate:
             yield ("script", self.js)
 
     def __html__(self) -> str:
+        if self.scope:
+            return f'<div class="{self.scope}" style="display:contents">{self.html}</div>'
         return self.html
 
     def render(self) -> str:
-        return self.html
+        return self.__html__()
 
     __str__ = render
 

@@ -11,6 +11,8 @@ pip install claide-web
 
 The package is published on PyPI as `claide-web`, but you import it as `claide`.
 
+📖 **Documentation: https://kurodaki-dev.github.io/Claide/**, a website built with Claide itself (see [`website/`](website/)).
+
 ## Quick start
 
 ```bash
@@ -51,8 +53,9 @@ page.add(
 
 - The component's CSS is **injected automatically** into the `<head>` (only once).
 - Tailwind-based components load Tailwind by themselves.
-- `.scoped()` / `.prefix("x-")` rename the CSS classes to avoid conflicts
-  (e.g. two components that both use `.button`).
+- `.scoped()` isolates the component's CSS (selectors are prefixed and `@keyframes`
+  renamed), so rules like `button { ... }` don't leak onto the rest of your page and two
+  components that both use `.button` don't conflict. `.prefix("x-")` renames classes instead.
 - `.add_css("...")` lets you override colors.
 - `UITemplate(html="...", css="...")` or `UITemplate.from_file("button.html")` for your own code.
 - `UITemplate.builtin("glow", "Send")`: bundled components that work offline
@@ -177,6 +180,9 @@ gunicorn app:app
 ```bash
 claide build app:app --out dist     # or app.build("dist")
 ```
+
+Serving under a sub-path (e.g. a GitHub Pages project site)? Use `App(base_path="/RepoName")`
+and build links with `app.url("/page")`, `app.static(...)` and `app.url_for(...)`.
 
 ## Testing
 

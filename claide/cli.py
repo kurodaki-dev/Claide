@@ -71,7 +71,7 @@ CSS_TEMPLATE = """/* Your CSS here */
 """
 
 JS_TEMPLATE = """// Your JavaScript here
-console.log("Claide is ready ✦");
+console.log("Claide is ready");
 """
 
 
@@ -104,7 +104,7 @@ def cmd_new(args: argparse.Namespace) -> None:
     for rel, content in files.items():
         with open(os.path.join(root, rel), "w", encoding="utf-8") as f:
             f.write(content)
-    print(f"✦ Project created in {root}/\n\n  cd {root}\n  python app.py\n")
+    print(f"Project created in {root}/\n\n  cd {root}\n  python app.py\n")
 
 
 def cmd_run(args: argparse.Namespace) -> None:
@@ -118,7 +118,7 @@ def cmd_run(args: argparse.Namespace) -> None:
 def cmd_build(args: argparse.Namespace) -> None:
     app = _load_app(args.app)
     written = app.build(args.out)
-    print(f"✦ {len(written)} page(s) written to {args.out}/")
+    print(f"{len(written)} page(s) written to {args.out}/")
 
 
 def cmd_ui(args: argparse.Namespace) -> None:
@@ -130,9 +130,9 @@ def cmd_ui(args: argparse.Namespace) -> None:
             f.write(tpl.html + "\n\n<style>\n" + tpl.css + "\n</style>\n")
             if tpl.js:
                 f.write("\n<script>\n" + tpl.js + "\n</script>\n")
-        print(f"✦ Saved to {args.save}")
+        print(f"Saved to {args.save}")
     elif args.preview:
-        print(f"✦ Preview: {tpl.preview()}")
+        print(f"Preview: {tpl.preview()}")
     else:
         print(f"<!-- {tpl!r} -->\n{tpl.html}\n\n<style>\n{tpl.css}\n</style>")
 
