@@ -671,6 +671,7 @@ class App(Router):
         base_path: str = "",
         theme: bool = False,
         auto_static: bool = True,
+        routes_folder: Optional[str] = "routes",
         favicon: Optional[str] = None,
     ) -> None:
         super().__init__("")
@@ -705,6 +706,8 @@ class App(Router):
             self._assets.append(("style", THEME_CSS))
         if auto_static:
             self._link_static_files()
+        self.routes_folder = routes_folder
+        self._routes_loaded = False
 
     def _link_static_files(self) -> None:
         """Link static/style.css, static/script.js and static/favicon.* automatically."""
@@ -720,6 +723,60 @@ class App(Router):
                 if os.path.isfile(os.path.join(folder, name)):
                     self.favicon = self.static(name)
                     break
+
+    def load_routes(self, folder: Optional[str] = None) -> List[str]:
+        """Import every ``.py`` file of a folder so the routes it declares are added.
+
+        Called automatically before the first request with the ``routes``
+        folder next to your app, so splitting a site into several files only
+        means creating ``routes/blog.py``, ``routes/api.py``... Inside those
+        files, ``@route`` / ``@get`` / ``@post`` register on this app, and a
+        ``router = Router(...)`` variable is included too. Files and folders
+        whose name starts with ``_`` are skipped. Returns the loaded files.
+        """
+        import importlib.util
+
+        from . import quick
+
+        base = folder if folder and os.path.isabs(folder) else os.path.join(self.root, folder or self.routes_folder or "")
+        if not os.path.isdir(base):
+            return []
+        loaded: List[str] = []
+        previous, quick._app = quick._app, self  # @route in these files targets this app
+        try:
+            for dirpath, dirnames, filenames in os.walk(base):
+                dirnames[:] = sorted(d for d in dirnames if not d.startswith(("_", ".")))
+                for filename in sorted(filenames):
+                    if not filename.endswith(".py") or filename.startswith("_"):
+                        continue
+                    path = os.path.join(dirpath, filename)
+                    rel = os.path.relpath(path, base)[:-3].replace(os.sep, ".")
+                    mod_name = f"claide_routes_{abs(hash(base)) % 10**8}.{rel}"
+                    if mod_name in sys.modules:
+                        continue
+                    spec = importlib.util.spec_from_file_location(mod_name, path)
+                    if spec is None or spec.loader is None:
+                        continue
+                    module = importlib.util.module_from_spec(spec)
+                    sys.modules[mod_name] = module
+                    try:
+                        spec.loader.exec_module(module)
+                    except Exception:
+                        del sys.modules[mod_name]
+                        raise
+                    router = getattr(module, "router", None)
+                    if isinstance(router, Router) and not isinstance(router, App):
+                        self.include(router)
+                    loaded.append(path)
+        finally:
+            quick._app = previous
+        return loaded
+
+    def _ensure_routes(self) -> None:
+        if not self._routes_loaded:
+            self._routes_loaded = True
+            if self.routes_folder:
+                self.load_routes()
 
     def get_secret_key(self) -> str:
         """Key that signs session cookies.
@@ -832,6 +889,7 @@ class App(Router):
 
     def url_for(self, name: str, **params: Any) -> str:
         """Build the URL of a route from its function name."""
+        self._ensure_routes()
         if name == "static":
             return self.static(params.pop("filename"))
         for r in self.routes:
@@ -989,6 +1047,7 @@ class App(Router):
             return self._error_response(request, HTTPError(500))
 
     def handle(self, request: Request) -> Response:
+        self._ensure_routes()
         _local.request = request
         if self.base_path and (request.path == self.base_path or request.path.startswith(self.base_path + "/")):
             request.path = request.path[len(self.base_path):] or "/"
@@ -1030,6 +1089,7 @@ class App(Router):
         Dynamic routes (``/user/<id>``) can be exported by listing the wanted
         URLs in ``extra_paths``.
         """
+        self._ensure_routes()
         if os.path.isdir(out_dir):
             shutil.rmtree(out_dir)
         os.makedirs(out_dir)

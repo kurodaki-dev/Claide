@@ -14,6 +14,7 @@ theme. Access it with ``claide.default_app()`` when you need more control.
 
 from __future__ import annotations
 
+import os
 import sys
 from typing import Any, Callable, Iterable, Optional
 
@@ -24,7 +25,7 @@ __all__ = ["default_app", "route", "get", "post", "put", "delete", "run", "layou
 _app: Optional[App] = None
 
 
-def default_app(module: Optional[str] = None) -> App:
+def default_app(module: Optional[str] = None, root: Optional[str] = None) -> App:
     """The application used by ``route``, ``get``, ``post`` and ``run``.
 
     It is created on first use, next to the file that declares the first
@@ -32,13 +33,18 @@ def default_app(module: Optional[str] = None) -> App:
     """
     global _app
     if _app is None:
-        _app = App(module or "__main__", theme=True)
+        _app = App(module or "__main__", root=root, theme=True)
     return _app
+
+
+def _root_of(func: Callable) -> Optional[str]:
+    filename = getattr(getattr(func, "__code__", None), "co_filename", "")
+    return os.path.dirname(os.path.abspath(filename)) if filename and os.path.isfile(filename) else None
 
 
 def _register(path: str, methods: Iterable[str]) -> Callable:
     def decorator(func: Callable) -> Callable:
-        return default_app(func.__module__).route(path, methods)(func)
+        return default_app(func.__module__, _root_of(func)).route(path, methods)(func)
     return decorator
 
 
@@ -65,13 +71,13 @@ def delete(path: str) -> Callable:
 
 def layout(func: Callable) -> Callable:
     """Function applied to every page (navbar, footer...). See ``App.layout``."""
-    return default_app(func.__module__).layout(func)
+    return default_app(func.__module__, _root_of(func)).layout(func)
 
 
 def error(status: int) -> Callable:
     """Custom page for an error code: ``@error(404)``."""
     def decorator(func: Callable) -> Callable:
-        return default_app(func.__module__).errorhandler(status)(func)
+        return default_app(func.__module__, _root_of(func)).errorhandler(status)(func)
     return decorator
 
 
@@ -83,8 +89,11 @@ def run(host: str = "127.0.0.1", port: int = 8000, **kwargs: Any) -> App:
     ``run()`` does nothing, so it can stay at the end of your file.
     Returns the application, for ``app = run()``.
     """
-    caller = sys._getframe(1).f_globals.get("__name__")
-    app = default_app(caller if caller != "__main__" else None)
+    caller_globals = sys._getframe(1).f_globals
+    caller = caller_globals.get("__name__")
+    filename = caller_globals.get("__file__")
+    root = os.path.dirname(os.path.abspath(filename)) if filename else None
+    app = default_app(caller if caller != "__main__" else None, root)
     if caller == "__main__":
         app.run(host, port, **kwargs)
     return app

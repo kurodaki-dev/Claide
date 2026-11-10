@@ -51,6 +51,7 @@ def square(n):
 ```
 
 - Every HTML tag is a function: `h1`, `p`, `div`, `a`, `img`, `form`, `input_`...
+- Split a big site into several files: every `.py` file in a `routes/` folder is loaded automatically.
 - `static/style.css`, `static/script.js` and `static/favicon.*` are linked automatically.
 - `md("""...""")` turns Markdown into HTML; `ui("https://uiverse.io/...")` adds a Uiverse component.
 
@@ -61,6 +62,13 @@ claide new mysite
 cd mysite
 python app.py
 ```
+
+## Claide IDE
+
+An application to write, run and preview Claide sites, for **Windows** (`.exe`), **Linux**
+(`.AppImage`, `.deb`) and **Android** (`.apk`). Python runs inside the app (WebAssembly), so
+nothing else needs to be installed. Download it from the
+[releases page](https://github.com/kurodaki-dev/Claide/releases/latest); the source is in [`ide/`](ide/).
 
 ## Uiverse / cssbuttons.io components
 
