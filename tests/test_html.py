@@ -28,3 +28,12 @@ def test_page_assets_dedup():
     assert html.count(".a{}") == 1
     assert html.index('src="/s.js"') > html.index("<body")
     assert "<title>T</title>" in html and 'lang="en"' in html
+
+
+def test_base_css_removes_tap_highlight():
+    html = Page("T").css("/mine.css").render()
+    assert "-webkit-tap-highlight-color: transparent" in html
+    assert ":focus:not(:focus-visible) { outline: none; }" in html
+    # the reset comes before the page's own stylesheets so they can override it
+    assert html.index("tap-highlight") < html.index('href="/mine.css"')
+    assert "tap-highlight" not in Page("T", base_css=False).render()

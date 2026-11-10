@@ -105,6 +105,9 @@ t.div(
 
 Text is escaped automatically (XSS protection) except with `raw()`.
 
+Every `Page` also includes a tiny CSS reset that removes the blue tap highlight on mobile
+(disable it with `Page(..., base_css=False)`).
+
 ### Layout components
 
 ```python
