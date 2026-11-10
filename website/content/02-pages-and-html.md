@@ -70,6 +70,14 @@ page.add(t.div([user_card(u.name, u.avatar) for u in users]))
 
 Use `Fragment(...)` to group elements without a wrapping tag.
 
+## Built-in CSS reset
+
+Every `Page` starts with a tiny stylesheet that removes the blue rectangle mobile browsers draw when you tap a link or a button, and the focus ring that appears after a mouse click. Keyboard users still get a visible focus ring. It comes first in the `<head>`, so your own CSS can override it.
+
+```python
+Page("Home", base_css=False)   # leave it out
+```
+
 ## Attaching CSS and JS to an element
 
 An element can carry its own CSS/JS. It is injected once into the page that contains it:

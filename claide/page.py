@@ -7,7 +7,14 @@ from typing import Any, Iterable, List, Optional
 
 from .html import Asset, Element, escape, iter_assets, render_attrs, render_node
 
-__all__ = ["Page"]
+__all__ = ["Page", "BASE_CSS"]
+
+#: Small CSS reset added to every page (disable with ``Page(..., base_css=False)``):
+#: no blue/grey highlight when tapping a link or button on mobile, no focus ring
+#: after a mouse click or a tap, but still a visible ring for keyboard users.
+BASE_CSS = """*, *::before, *::after { -webkit-tap-highlight-color: transparent; }
+:focus:not(:focus-visible) { outline: none; }
+a, button, input, select, textarea, label, summary, [role="button"] { touch-action: manipulation; }"""
 
 
 class Page:
@@ -20,6 +27,10 @@ class Page:
         page.js("/static/script.js")
         page.add(tags.h1("Welcome!"))
         html = page.render()
+
+    Every page includes a tiny CSS reset (``BASE_CSS``) that removes the
+    blue highlight shown when tapping links and buttons on mobile, and the
+    focus ring after a click. Pass ``base_css=False`` to leave it out.
     """
 
     def __init__(
@@ -33,6 +44,7 @@ class Page:
         viewport: str = "width=device-width, initial-scale=1",
         body_attrs: Optional[dict] = None,
         html_attrs: Optional[dict] = None,
+        base_css: bool = True,
     ) -> None:
         self.title = title
         self.lang = lang
@@ -42,6 +54,7 @@ class Page:
         self.viewport = viewport
         self.body = Element("body", *children, **(body_attrs or {}))
         self.html_attrs = html_attrs or {}
+        self.base_css = base_css
         self.head_extra: List[Any] = []
         self.metas: List[dict] = []
         self._assets: List[Asset] = []
@@ -120,6 +133,9 @@ class Page:
             f'<meta name="viewport" content="{escape(self.viewport)}">',
             f"<title>{escape(self.title)}</title>",
         ]
+        if self.base_css:
+            # First in <head>, so any stylesheet of the page can override it.
+            head.append(f"<style>\n{BASE_CSS}\n</style>")
         if self.description:
             head.append(f'<meta name="description" content="{escape(self.description)}">')
         if self.favicon:
