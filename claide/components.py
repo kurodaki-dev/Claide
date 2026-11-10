@@ -1,4 +1,4 @@
-"""Blocs de mise en page prêts à l'emploi (avec leur CSS intégré).
+"""Ready-made layout blocks (with their CSS built in).
 
     from claide.components import Navbar, Hero, Section, Grid, Card, Footer, Form, Field
 """
@@ -78,9 +78,9 @@ def Container(*children: Any, **attrs: Any) -> Element:
     return _el("div", *children, **attrs).add_class("cl-container")
 
 
-def Navbar(brand: Any = "Mon site", links: Iterable[Link] = (), brand_href: str = "/",
+def Navbar(brand: Any = "My site", links: Iterable[Link] = (), brand_href: str = "/",
            current: Optional[str] = None, **attrs: Any) -> Element:
-    """Barre de navigation. ``links=[("Accueil", "/"), ("Contact", "/contact")]``."""
+    """Navigation bar. ``links=[("Home", "/"), ("Contact", "/contact")]``."""
     items = [
         Element("li", Element("a", label, href=href, aria_current="page" if href == current else None))
         for label, href in links
@@ -90,7 +90,7 @@ def Navbar(brand: Any = "Mon site", links: Iterable[Link] = (), brand_href: str 
 
 
 def Button(label: Any, href: Optional[str] = None, outline: bool = False, **attrs: Any) -> Element:
-    """Bouton simple (lien si ``href`` est donné)."""
+    """Simple button (a link when ``href`` is given)."""
     cls = "cl-btn cl-outline" if outline else "cl-btn"
     if href is not None:
         return _el("a", label, href=href, **attrs).add_class(cls)
@@ -99,7 +99,7 @@ def Button(label: Any, href: Optional[str] = None, outline: bool = False, **attr
 
 
 def Hero(title: Any, subtitle: Any = None, *actions: Any, **attrs: Any) -> Element:
-    """Grande bannière d'accueil. ``actions`` : boutons, UITemplate..."""
+    """Big landing banner. ``actions``: buttons, UITemplate..."""
     return _el("header", Container(
         Element("h1", title),
         Element("p", subtitle) if subtitle else None,
@@ -113,7 +113,7 @@ def Section(*children: Any, title: Any = None, alt: bool = False, id: Optional[s
 
 
 def Grid(*children: Any, min_width: str = "250px", **attrs: Any) -> Element:
-    """Grille responsive : les colonnes s'adaptent à la largeur de l'écran."""
+    """Responsive grid: columns adapt to the screen width."""
     style = attrs.pop("style", "")
     return _el("div", *children, style=f"--cl-min:{min_width};{style}", **attrs).add_class("cl-grid")
 
@@ -133,13 +133,13 @@ def Footer(*children: Any, **attrs: Any) -> Element:
 
 
 def Alert(message: Any, kind: str = "info", **attrs: Any) -> Element:
-    """Message : ``kind`` = "info", "success" ou "error"."""
+    """Message box: ``kind`` = "info", "success" or "error"."""
     return _el("div", message, role="alert", **attrs).add_class("cl-alert", f"cl-alert-{kind}")
 
 
 def Field(label: str, name: str, type: str = "text", value: Any = None, required: bool = False,  # noqa: A002
           options: Optional[Iterable[Any]] = None, **attrs: Any) -> Element:
-    """Champ de formulaire avec son label. ``type`` peut être "textarea" ou "select"."""
+    """Form field with its label. ``type`` may also be "textarea" or "select"."""
     fid = attrs.pop("id", f"f-{name}")
     if type == "textarea":
         control = Element("textarea", value or "", name=name, id=fid, required=required, rows=attrs.pop("rows", 5), **attrs)
@@ -154,9 +154,9 @@ def Field(label: str, name: str, type: str = "text", value: Any = None, required
     return _el("div", Element("label", label, for_=fid), control).add_class("cl-field")
 
 
-def Form(*children: Any, action: str = "", method: str = "post", submit: Optional[str] = "Envoyer",
+def Form(*children: Any, action: str = "", method: str = "post", submit: Optional[str] = "Submit",
          upload: bool = False, **attrs: Any) -> Element:
-    """Formulaire. ``upload=True`` pour permettre l'envoi de fichiers."""
+    """Form. Use ``upload=True`` to allow file uploads."""
     if upload:
         attrs["enctype"] = "multipart/form-data"
     return _el("form", *children, Button(submit, type="submit") if submit else None,

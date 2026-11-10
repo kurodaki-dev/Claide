@@ -54,7 +54,7 @@ def test_fetch_and_render(fake_github):
     html = Page("x", tpl).render()
     assert ".cta { color: red; }" in html
     assert '<button class="cta">' in html
-    # mise en cache : pas de nouvel appel réseau
+    # cached: no new network call
     n = len(fake_github)
     UITemplate("someone/cool-cat-1")
     assert len(fake_github) == n
@@ -72,7 +72,7 @@ def test_scoped_does_not_touch_other_classes():
     tpl = UITemplate("someone/cool-cat-1").prefix("x-")
     assert 'class="x-cta"' in tpl.html
     assert ".x-cta span" in tpl.css
-    assert ".cta-other" in tpl.css  # classe absente du HTML : inchangée
+    assert ".cta-other" in tpl.css  # class not in the HTML: unchanged
 
 
 def test_tailwind_detection():
@@ -89,10 +89,10 @@ def test_not_found():
 def test_manual_and_builtin():
     tpl = UITemplate(html="<button class='b'>OK</button>", css=".b{color:red}")
     assert ".b{color:red}" in Page("x", tpl).render()
-    b = UITemplate.builtin("glow", "Envoyer")
-    assert "Envoyer" in b.html and ".cl-glow" in b.css
+    b = UITemplate.builtin("glow", "Send")
+    assert "Send" in b.html and ".cl-glow" in b.css
     with pytest.raises(UITemplateError):
-        UITemplate.builtin("inconnu")
+        UITemplate.builtin("unknown")
 
 
 def test_import_style():

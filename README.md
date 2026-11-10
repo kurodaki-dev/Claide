@@ -1,20 +1,22 @@
 # Claide ✦
 
-**Crée des sites web complets en Python, de A à Z** : pages HTML, routes dynamiques,
-formulaires, uploads, API JSON, sessions, fichiers `style.css` / `script.js`, et
-les milliers de composants de [cssbuttons.io](https://cssbuttons.io) / [Uiverse.io](https://uiverse.io)
-en une ligne. Zéro dépendance.
+**Build complete websites in Python, from A to Z**: HTML pages, dynamic routes,
+forms, file uploads, JSON APIs, sessions, your own `style.css` / `script.js`, and
+the thousands of components from [cssbuttons.io](https://cssbuttons.io) / [Uiverse.io](https://uiverse.io)
+in a single line. Zero dependencies.
 
 ```bash
-pip install claide
+pip install claide-web
 ```
 
-## Démarrage rapide
+The package is published on PyPI as `claide-web`, but you import it as `claide`.
+
+## Quick start
 
 ```bash
-claide new monsite
-cd monsite
-python app.py        # -> http://127.0.0.1:8000 (rechargement automatique)
+claide new mysite
+cd mysite
+python app.py        # -> http://127.0.0.1:8000 (auto-reload)
 ```
 
 ```python
@@ -24,46 +26,46 @@ app = App(__name__)
 
 @app.route("/")
 def home():
-    return Page("Accueil", t.h1("Salut !"), t.p("Mon premier site Claide."))
+    return Page("Home", t.h1("Hello!"), t.p("My first Claide website."))
 
 app.run()
 ```
 
-## Composants Uiverse / cssbuttons.io
+## Uiverse / cssbuttons.io components
 
-Copie l'URL d'un élément sur uiverse.io (cssbuttons.io redirige vers uiverse.io/buttons) :
+Copy the URL of an element on uiverse.io (cssbuttons.io redirects to uiverse.io/buttons):
 
 ```python
-from claide import UITemplate          # ou : from claide import uitemplate
+from claide import UITemplate          # or: from claide import uitemplate
 
-bouton = UITemplate("https://uiverse.io/0x-Sarthak/hungry-penguin-30")
-# ou UITemplate("0x-Sarthak/hungry-penguin-30")
+button = UITemplate("https://uiverse.io/0x-Sarthak/hungry-penguin-30")
+# or UITemplate("0x-Sarthak/hungry-penguin-30")
 
 page.add(
-    bouton
-      .text("Contact Us", "Écris-moi")     # change le texte
-      .attrs(id="envoyer", onclick="go()") # ajoute des attributs
-      .link("/contact")                    # en fait un lien
+    button
+      .text("Contact Us", "Write me")     # change the text
+      .attrs(id="send", onclick="go()")   # add attributes
+      .link("/contact")                   # turn it into a link
 )
 ```
 
-- Le CSS du composant est **injecté automatiquement** dans le `<head>` (une seule fois).
-- Les composants écrits en Tailwind chargent Tailwind tout seuls.
-- `.scoped()` / `.prefix("x-")` renomment les classes pour éviter les conflits
-  (ex. deux composants qui utilisent `.button`).
-- `.add_css("...")` pour surcharger des couleurs.
-- `UITemplate(html="...", css="...")` ou `UITemplate.from_file("bouton.html")` pour ton propre code.
-- `UITemplate.builtin("glow", "Envoyer")` : composants intégrés, sans Internet
+- The component's CSS is **injected automatically** into the `<head>` (only once).
+- Tailwind-based components load Tailwind by themselves.
+- `.scoped()` / `.prefix("x-")` rename the CSS classes to avoid conflicts
+  (e.g. two components that both use `.button`).
+- `.add_css("...")` lets you override colors.
+- `UITemplate(html="...", css="...")` or `UITemplate.from_file("button.html")` for your own code.
+- `UITemplate.builtin("glow", "Send")`: bundled components that work offline
   (`gradient`, `glow`, `slide`, `pushable`, `spinner`, `toggle`, `card`).
-- Les composants sont téléchargés depuis le dépôt officiel `uiverse-io/galaxy`
-  (licence MIT) puis mis en cache dans `~/.cache/claide`.
+- Components are downloaded from the official `uiverse-io/galaxy` repository
+  (MIT license) and cached in `~/.cache/claide`.
 
-En ligne de commande : `claide ui auteur/nom --preview` ou `--save bouton.html`.
+From the command line: `claide ui author/name --preview` or `--save button.html`.
 
-## Lier ses fichiers CSS / JS
+## Linking your CSS / JS files
 
 ```
-monsite/
+mysite/
 ├── app.py
 └── static/
     ├── style.css
@@ -72,55 +74,55 @@ monsite/
 ```
 
 ```python
-app.css(app.static("style.css"))   # sur toutes les pages
+app.css(app.static("style.css"))   # on every page
 app.js(app.static("script.js"))
 
 page = Page("Contact")
-page.css("/static/contact.css")    # sur une seule page
+page.css("/static/contact.css")    # on a single page
 page.js("https://cdn.jsdelivr.net/npm/chart.js")
-page.style("h1 { color: red }")    # CSS inline
-page.script("console.log('hi')")   # JS inline
-page.style_file("theme.css")       # intègre le contenu d'un fichier
+page.style("h1 { color: red }")    # inline CSS
+page.script("console.log('hi')")   # inline JS
+page.style_file("theme.css")       # inline the content of a file
 ```
 
-## Construire le HTML en Python
+## Building HTML in Python
 
 ```python
 from claide import tags as t, raw
 
 t.div(
-    t.h1("Titre", class_="big"),          # class_ -> class
-    t.a("Lien", href="/x", data_id=3),    # data_id -> data-id
+    t.h1("Title", class_="big"),          # class_ -> class
+    t.a("Link", href="/x", data_id=3),    # data_id -> data-id
     t.input(type="checkbox", checked=True),
     t.ul([t.li(x) for x in ["a", "b"]]),
-    raw("<b>HTML brut</b>"),
+    raw("<b>raw HTML</b>"),
     style={"padding": "1rem"},
 )
 ```
 
-Le texte est échappé automatiquement (protection XSS) sauf avec `raw()`.
+Text is escaped automatically (XSS protection) except with `raw()`.
 
-### Composants de mise en page
+### Layout components
 
 ```python
 from claide.components import Navbar, Hero, Section, Grid, Card, Footer, Form, Field, Button, Alert
 
-Page("Accueil",
-    Navbar("Mon site", [("Accueil", "/"), ("Contact", "/contact")]),
-    Hero("Bienvenue", "Sous-titre", Button("Commencer", "/start")),
-    Section(Grid(Card("A", "texte"), Card("B", "texte", image="/static/b.jpg")), title="Services"),
+Page("Home",
+    Navbar("My site", [("Home", "/"), ("Contact", "/contact")]),
+    Hero("Welcome", "Subtitle", Button("Get started", "/start")),
+    Section(Grid(Card("A", "text"), Card("B", "text", image="/static/b.jpg")), title="Services"),
     Footer("© 2026"),
 )
 ```
 
-## Serveur dynamique
+## Dynamic server
 
 ```python
 from claide import App, Page, Router, redirect, abort, send_file
 
-app = App(__name__, secret_key="change-moi")
+app = App(__name__, secret_key="change-me")
 
-@app.get("/user/<int:uid>")              # convertisseurs : str, int, float, slug, path
+@app.get("/user/<int:uid>")              # converters: str, int, float, slug, path
 def user(uid, request):
     page = request.args.get("page", "1") # ?page=2
     return Page(f"User {uid}", ...)
@@ -128,10 +130,10 @@ def user(uid, request):
 @app.route("/contact", methods=["GET", "POST"])
 def contact(request):
     if request.method == "POST":
-        nom = request.form["nom"]
-        request.files["cv"].save("uploads/")   # upload
-        request.session["nom"] = nom            # session (cookie signé)
-        return redirect("/merci")
+        name = request.form["name"]
+        request.files["cv"].save("uploads/")    # file upload
+        request.session["name"] = name          # session (signed cookie)
+        return redirect("/thanks")
     return Page(...)
 
 @app.post("/api/items")
@@ -141,9 +143,9 @@ def create(request):
 
 @app.errorhandler(404)
 def not_found():
-    return Page("Oups", t.h1("Page introuvable"))
+    return Page("Oops", t.h1("Page not found"))
 
-@app.layout                                  # appliqué à chaque Page
+@app.layout                                  # applied to every Page
 def base(page):
     page.body.children.insert(0, navbar)
 
@@ -158,25 +160,25 @@ def ping(): return {"pong": True}
 app.include(api)
 ```
 
-Une route peut renvoyer : `Page`, un élément, un `UITemplate`, `str`, `dict`/`list` (JSON),
-`Response`, un générateur (streaming), ou un tuple `(contenu, statut, en-têtes)`.
+A route can return: a `Page`, an element, a `UITemplate`, `str`, `dict`/`list` (JSON),
+a `Response`, a generator (streaming), or a `(body, status, headers)` tuple.
 
 ### Production
 
-`App` est une application **WSGI** standard :
+`App` is a standard **WSGI** application:
 
 ```bash
 pip install gunicorn
 gunicorn app:app
 ```
 
-### Export statique (optionnel)
+### Static export (optional)
 
 ```bash
-claide build app:app --out dist     # ou app.build("dist")
+claide build app:app --out dist     # or app.build("dist")
 ```
 
-## Tests
+## Testing
 
 ```python
 client = app.test_client()
@@ -184,21 +186,21 @@ assert client.get("/").status == 200
 assert client.post("/api/items", json_data={"a": 1}).json["ok"]
 ```
 
-## Publication automatique sur PyPI
+## Automatic PyPI publishing
 
-Le workflow `.github/workflows/ci.yml` lance les tests puis publie sur PyPI à
-chaque push sur `main` (et sur les tags `v*`). Si la version existe déjà, rien
-n'est envoyé : **augmente `__version__` dans `claide/__init__.py` pour publier.**
+`.github/workflows/ci.yml` runs the tests, builds the package, then publishes it
+to PyPI on every push to `main` (and on `v*` tags). If the version already exists,
+nothing is uploaded: **bump `__version__` in `claide/__init__.py` to release.**
 
-À configurer une seule fois :
+One-time setup:
 
-1. Sur [pypi.org](https://pypi.org/manage/account/token/), crée un token API.
-2. Sur GitHub : *Settings → Secrets and variables → Actions → New repository secret*,
-   nom **`PYPI_API_TOKEN`**, valeur = le token (`pypi-...`).
-3. Le job utilise l'environnement GitHub `pypi` (créé automatiquement ; tu peux y
-   ajouter une validation manuelle dans *Settings → Environments*).
+1. On [pypi.org](https://pypi.org/manage/account/token/), create an API token.
+2. On GitHub: *Settings → Secrets and variables → Actions → New repository secret*,
+   name **`PYPI_API_TOKEN`**, value = the token (`pypi-...`).
+3. The job uses the `pypi` GitHub environment (created automatically; you can add
+   a manual approval in *Settings → Environments*).
 
-## Licence
+## License
 
-MIT. Les composants Uiverse.io sont sous licence MIT ; pense à créditer leurs auteurs
-(Claide ajoute automatiquement un commentaire de crédit dans le CSS).
+MIT. Uiverse.io components are MIT licensed; please credit their authors
+(Claide automatically adds a credit comment in the CSS).

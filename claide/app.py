@@ -1,15 +1,15 @@
-"""Application web Claide : routes dynamiques, formulaires, API JSON, sessions,
-fichiers statiques, uploads, streaming... (serveur WSGI, aucune dépendance).
+"""Claide web application: dynamic routes, forms, JSON API, sessions,
+static files, uploads, streaming... (WSGI server, zero dependencies).
 
-Exemple ::
+Example ::
 
     from claide import App, Page, tags as t
 
-    app = App(__name__, secret_key="change-moi")
+    app = App(__name__, secret_key="change-me")
 
     @app.route("/")
     def home():
-        return Page("Accueil", t.h1("Salut !"))
+        return Page("Home", t.h1("Hi!"))
 
     @app.route("/hello/<name>")
     def hello(name):
@@ -55,10 +55,10 @@ __all__ = [
 
 
 # ---------------------------------------------------------------------------
-# Requête
+# Request
 # ---------------------------------------------------------------------------
 class UploadedFile:
-    """Fichier envoyé via un formulaire ``<input type="file">``."""
+    """File sent through an ``<input type="file">`` form field."""
 
     def __init__(self, filename: str, content_type: str, data: bytes) -> None:
         self.filename = filename
@@ -70,7 +70,7 @@ class UploadedFile:
         return len(self.data)
 
     def save(self, path: str) -> str:
-        """Enregistre le fichier. Si ``path`` est un dossier, garde le nom d'origine (nettoyé)."""
+        """Save the file. If ``path`` is a directory, keep the (sanitized) original name."""
         if os.path.isdir(path):
             path = os.path.join(path, secure_filename(self.filename))
         with open(path, "wb") as f:
@@ -84,11 +84,11 @@ class UploadedFile:
 def secure_filename(name: str) -> str:
     name = os.path.basename(name.replace("\\", "/"))
     name = re.sub(r"[^\w.\-]", "_", name).strip("._")
-    return name or "fichier"
+    return name or "file"
 
 
 class MultiDict(dict):
-    """dict qui garde toutes les valeurs : ``d["x"]`` -> première, ``d.getlist("x")`` -> toutes."""
+    """dict that keeps every value: ``d["x"]`` -> first, ``d.getlist("x")`` -> all."""
 
     def __init__(self, pairs: Iterable[Tuple[str, Any]] = ()) -> None:
         super().__init__()
@@ -103,14 +103,14 @@ class MultiDict(dict):
 
 
 class Request:
-    """Requête HTTP entrante."""
+    """Incoming HTTP request."""
 
     def __init__(self, environ: dict, app: Optional["App"] = None) -> None:
         self.environ = environ
         self.app = app
         self.method: str = environ.get("REQUEST_METHOD", "GET").upper()
         raw_path = environ.get("PATH_INFO", "/") or "/"
-        try:  # WSGI décode en latin-1, on remet en UTF-8
+        try:  # WSGI decodes as latin-1, convert back to UTF-8
             raw_path = raw_path.encode("latin-1").decode("utf-8")
         except (UnicodeEncodeError, UnicodeDecodeError):
             pass
@@ -121,9 +121,9 @@ class Request:
         self._form: Optional[MultiDict] = None
         self._files: Optional[MultiDict] = None
         self._session: Optional["Session"] = None
-        self.g: Dict[str, Any] = {}  # stockage libre pendant la requête
+        self.g: Dict[str, Any] = {}  # free storage during the request
 
-    # -- en-têtes ------------------------------------------------------------
+    # -- headers -------------------------------------------------------------
     @property
     def headers(self) -> Dict[str, str]:
         h = {}
@@ -158,10 +158,10 @@ class Request:
     def is_json(self) -> bool:
         return "json" in self.content_type
 
-    # -- données -------------------------------------------------------------
+    # -- data ----------------------------------------------------------------
     @property
     def args(self) -> MultiDict:
-        """Paramètres de l'URL (``?page=2``)."""
+        """URL query parameters (``?page=2``)."""
         return MultiDict(
             (k, v) for k, vs in parse_qs(self.query_string, keep_blank_values=True).items() for v in vs
         )
@@ -177,7 +177,7 @@ class Request:
                 length = 0
             max_size = self.app.max_content_length if self.app else None
             if max_size is not None and length > max_size:
-                raise HTTPError(413, "Requête trop volumineuse")
+                raise HTTPError(413, "Request body too large")
             stream = self.environ.get("wsgi.input")
             self._body = stream.read(length) if (stream and length > 0) else b""
         return self._body
@@ -188,13 +188,13 @@ class Request:
 
     @property
     def json(self) -> Any:
-        """Corps de la requête décodé en JSON (``None`` si vide)."""
+        """Request body decoded as JSON (``None`` if empty)."""
         if not self.body:
             return None
         try:
             return json.loads(self.body)
         except ValueError:
-            raise HTTPError(400, "JSON invalide") from None
+            raise HTTPError(400, "Invalid JSON") from None
 
     def _parse_form(self) -> None:
         self._form, self._files = MultiDict(), MultiDict()
@@ -222,20 +222,20 @@ class Request:
 
     @property
     def form(self) -> MultiDict:
-        """Champs d'un formulaire POST (urlencoded ou multipart)."""
+        """Fields of a POST form (urlencoded or multipart)."""
         if self._form is None:
             self._parse_form()
         return self._form  # type: ignore[return-value]
 
     @property
     def files(self) -> MultiDict:
-        """Fichiers envoyés (``request.files["avatar"].save("uploads/")``)."""
+        """Uploaded files (``request.files["avatar"].save("uploads/")``)."""
         if self._files is None:
             self._parse_form()
         return self._files  # type: ignore[return-value]
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Cherche une valeur dans params d'URL, formulaire, JSON puis query string."""
+        """Look up a value in URL params, form, JSON body, then query string."""
         if key in self.params:
             return self.params[key]
         if self.method in ("POST", "PUT", "PATCH", "DELETE"):
@@ -250,16 +250,16 @@ class Request:
         jar = SimpleCookie()
         try:
             jar.load(self.environ.get("HTTP_COOKIE", ""))
-        except Exception:  # cookie mal formé
+        except Exception:  # malformed cookie
             return {}
         return {k: m.value for k, m in jar.items()}
 
     @property
     def session(self) -> "Session":
-        """Session utilisateur stockée dans un cookie signé (nécessite ``secret_key``)."""
+        """User session stored in a signed cookie (requires ``secret_key``)."""
         if self._session is None:
             if not self.app or not self.app.secret_key:
-                raise RuntimeError("Les sessions nécessitent App(secret_key='...').")
+                raise RuntimeError("Sessions require App(secret_key='...').")
             self._session = Session.load(self.cookies.get(self.app.session_cookie, ""), self.app.secret_key)
         return self._session
 
@@ -268,7 +268,7 @@ class Request:
 
 
 class Session(dict):
-    """dict sauvegardé dans un cookie signé HMAC (lisible mais non falsifiable)."""
+    """dict saved in an HMAC-signed cookie (readable but tamper-proof)."""
 
     modified = False
 
@@ -314,10 +314,10 @@ class Session(dict):
 
 
 # ---------------------------------------------------------------------------
-# Réponse
+# Response
 # ---------------------------------------------------------------------------
 class HTTPError(Exception):
-    """Lève une erreur HTTP : ``raise HTTPError(404)`` ou ``abort(403)``."""
+    """Raise an HTTP error: ``raise HTTPError(404)`` or ``abort(403)``."""
 
     def __init__(self, status: int = 500, message: Optional[str] = None) -> None:
         self.status = status
@@ -334,7 +334,7 @@ def abort(status: int, message: Optional[str] = None) -> None:
 
 
 class Response:
-    """Réponse HTTP. ``body`` peut être str, bytes, ou un itérable (streaming)."""
+    """HTTP response. ``body`` may be str, bytes or an iterable (streaming)."""
 
     def __init__(
         self,
@@ -409,7 +409,7 @@ class Response:
 
     @property
     def data(self) -> bytes:
-        """Corps complet (pratique pour les tests)."""
+        """Full body (handy in tests)."""
         return b"".join(self.iter_body())
 
     @property
@@ -430,7 +430,7 @@ def redirect(location: str, status: int = 302) -> Response:
 
 def send_file(path: str, download_name: Optional[str] = None, as_attachment: bool = False,
               max_age: Optional[int] = None) -> Response:
-    """Renvoie un fichier du disque (avec le bon type MIME)."""
+    """Send a file from disk (with the right MIME type)."""
     if not os.path.isfile(path):
         raise HTTPError(404)
     ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
@@ -448,7 +448,7 @@ def send_file(path: str, download_name: Optional[str] = None, as_attachment: boo
 
 
 # ---------------------------------------------------------------------------
-# Routage
+# Routing
 # ---------------------------------------------------------------------------
 _CONVERTERS = {
     "str": (r"[^/]+", str),
@@ -474,7 +474,7 @@ class Route:
             pattern += re.escape(path[pos:m.start()])
             conv = m.group(1) or "str"
             if conv not in _CONVERTERS:
-                raise ValueError(f"Convertisseur inconnu '{conv}' dans {path!r}")
+                raise ValueError(f"Unknown converter '{conv}' in {path!r}")
             regex, func = _CONVERTERS[conv]
             pattern += f"(?P<{m.group(2)}>{regex})"
             self.converters[m.group(2)] = func
@@ -496,7 +496,7 @@ class Route:
         def sub(m: "re.Match[str]") -> str:
             key = m.group(2)
             if key not in params:
-                raise KeyError(f"Paramètre manquant '{key}' pour la route {self.name!r}")
+                raise KeyError(f"Missing parameter '{key}' for route {self.name!r}")
             return quote(str(params.pop(key)), safe="/" if m.group(1) == "path" else "")
         url = _PARAM_RE.sub(sub, self.path)
         if params:
@@ -505,7 +505,7 @@ class Route:
 
 
 class Router:
-    """Groupe de routes réutilisable, monté sur une App avec un préfixe.
+    """Reusable group of routes, mounted on an App with a prefix.
 
     ::
 
@@ -558,7 +558,7 @@ _local = threading.local()
 
 
 class App(Router):
-    """Application web complète (compatible WSGI : gunicorn, waitress, uWSGI...)."""
+    """Complete web application (WSGI compatible: gunicorn, waitress, uWSGI...)."""
 
     def __init__(
         self,
@@ -569,7 +569,7 @@ class App(Router):
         root: Optional[str] = None,
         secret_key: Optional[str] = None,
         title: Optional[str] = None,
-        lang: str = "fr",
+        lang: str = "en",
         max_content_length: Optional[int] = 16 * 1024 * 1024,
     ) -> None:
         super().__init__("")
@@ -595,12 +595,12 @@ class App(Router):
 
     # -- configuration -------------------------------------------------------
     def css(self, *hrefs: str) -> "App":
-        """Feuille(s) de style ajoutée(s) à TOUTES les pages : ``app.css("/static/style.css")``."""
+        """Stylesheet(s) added to EVERY page: ``app.css("/static/style.css")``."""
         self._assets.extend(("css", h) for h in hrefs)
         return self
 
     def js(self, *srcs: str) -> "App":
-        """Script(s) ajouté(s) à TOUTES les pages : ``app.js("/static/script.js")``."""
+        """Script(s) added to EVERY page: ``app.js("/static/script.js")``."""
         self._assets.extend(("js", s) for s in srcs)
         return self
 
@@ -613,17 +613,17 @@ class App(Router):
         return self
 
     def use(self, *templates: Any) -> "App":
-        """Charge le CSS/JS de composants (UITemplate...) sur toutes les pages."""
+        """Load the CSS/JS of components (UITemplate...) on every page."""
         for t in templates:
             self._assets.extend(iter_assets(t))
         return self
 
     def static(self, filename: str) -> str:
-        """URL d'un fichier statique : ``app.static("style.css")`` -> ``/static/style.css``."""
+        """URL of a static file: ``app.static("style.css")`` -> ``/static/style.css``."""
         return f"{self.static_url}/{filename.lstrip('/')}"
 
     def layout(self, func: Callable[[Page], Any]) -> Callable:
-        """Décorateur : fonction appelée sur chaque Page avant rendu (navbar, footer...).
+        """Decorator: function called on every Page before rendering (navbar, footer...).
 
         ::
 
@@ -636,47 +636,47 @@ class App(Router):
         return func
 
     def before_request(self, func: Callable) -> Callable:
-        """Exécuté avant chaque requête. S'il renvoie une valeur, elle sert de réponse."""
+        """Run before every request. If it returns a value, that value is the response."""
         self._before.append(func)
         return func
 
     def after_request(self, func: Callable) -> Callable:
-        """Exécuté après chaque requête : ``func(request, response)`` -> response."""
+        """Run after every request: ``func(request, response)`` -> response."""
         self._after.append(func)
         return func
 
     def errorhandler(self, status: int) -> Callable:
-        """Page personnalisée pour un code d'erreur : ``@app.errorhandler(404)``."""
+        """Custom page for an error code: ``@app.errorhandler(404)``."""
         def decorator(func: Callable) -> Callable:
             self._error_handlers[status] = func
             return func
         return decorator
 
     def include(self, router: Router, prefix: str = "") -> "App":
-        """Monte un ``Router`` sur l'application."""
+        """Mount a ``Router`` on the application."""
         for r in router.routes:
             path = prefix.rstrip("/") + r.path if prefix else r.path
             self.routes.append(Route(path or "/", r.handler, r.methods - {"HEAD"}, r.name))
         return self
 
     def page(self, path: str, page: Any, name: Optional[str] = None) -> "App":
-        """Enregistre une page fixe sans écrire de fonction : ``app.page("/about", Page(...))``."""
+        """Register a fixed page without writing a function: ``app.page("/about", Page(...))``."""
         self.add_route(path, lambda: page, ("GET",), name or f"page:{path}")
         return self
 
     def url_for(self, name: str, **params: Any) -> str:
-        """Construit l'URL d'une route à partir du nom de sa fonction."""
+        """Build the URL of a route from its function name."""
         if name == "static":
             return self.static(params.pop("filename"))
         for r in self.routes:
             if r.name == name:
                 return r.build(**params)
-        raise KeyError(f"Aucune route nommée {name!r}")
+        raise KeyError(f"No route named {name!r}")
 
-    # -- traitement ----------------------------------------------------------
+    # -- handling ------------------------------------------------------------
     @staticmethod
     def current_request() -> Optional[Request]:
-        """Requête en cours (dans le thread actuel)."""
+        """Current request (in the current thread)."""
         return getattr(_local, "request", None)
 
     def _call(self, func: Callable, request: Request, **kwargs: Any) -> Any:
@@ -693,7 +693,7 @@ class App(Router):
         return func(**call_kwargs)
 
     def make_response(self, value: Any, request: Optional[Request] = None) -> Response:
-        """Convertit ce que renvoie une route en ``Response``."""
+        """Convert a route's return value into a ``Response``."""
         status, headers = 200, {}
         if isinstance(value, tuple):
             value, *rest = value
@@ -715,7 +715,7 @@ class App(Router):
         elif isinstance(value, (str, bytes)):
             resp = Response(value, status)
         elif hasattr(value, "__html__"):
-            # Element, UITemplate, Fragment... -> enveloppé dans une Page
+            # Element, UITemplate, Fragment... -> wrapped in a Page
             resp = Response(self.render_page(Page(self.title, value, lang=self.lang)), status)
         elif inspect.isgenerator(value) or hasattr(value, "__iter__"):
             resp = Response(value, status)  # streaming
@@ -824,28 +824,28 @@ class App(Router):
             _local.request = None
 
     def __call__(self, environ: dict, start_response: Callable) -> Iterable[bytes]:
-        """Point d'entrée WSGI."""
+        """WSGI entry point."""
         response = self.handle(Request(environ, self))
         start_response(response.status_line, response.headers)
         return response.iter_body()
 
-    # -- outils --------------------------------------------------------------
+    # -- tools ---------------------------------------------------------------
     def test_client(self) -> "TestClient":
-        """Client de test : ``app.test_client().get("/")``."""
+        """Test client: ``app.test_client().get("/")``."""
         return TestClient(self)
 
     def run(self, host: str = "127.0.0.1", port: int = 8000, debug: bool = True,
             reload: Optional[bool] = None) -> None:
-        """Lance le serveur de développement. ``reload`` relance quand un fichier change."""
+        """Start the development server. ``reload`` restarts it when a file changes."""
         from .server import run_server  # import local
         self.debug = debug
         run_server(self, host, port, reload=debug if reload is None else reload)
 
     def build(self, out_dir: str = "dist", extra_paths: Iterable[str] = ()) -> List[str]:
-        """Export statique (optionnel) : génère les pages GET sans paramètre + copie /static.
+        """Optional static export: render every parameterless GET route + copy /static.
 
-        Les routes dynamiques (``/user/<id>``) peuvent être exportées en listant
-        les URLs voulues dans ``extra_paths``.
+        Dynamic routes (``/user/<id>``) can be exported by listing the wanted
+        URLs in ``extra_paths``.
         """
         if os.path.isdir(out_dir):
             shutil.rmtree(out_dir)
@@ -881,7 +881,7 @@ class App(Router):
 
 
 class TestClient:
-    """Envoie des requêtes à l'app sans lancer de serveur (pour les tests)."""
+    """Send requests to the app without starting a server (for tests)."""
 
     def __init__(self, app: App) -> None:
         self.app = app
@@ -914,7 +914,7 @@ class TestClient:
             key = k.upper().replace("-", "_")
             environ[key if key in ("CONTENT_TYPE", "CONTENT_LENGTH") else "HTTP_" + key] = v
         resp = self.app.handle(Request(environ, self.app))
-        resp.body = resp.data  # consomme les générateurs
+        resp.body = resp.data  # consume generators
         for k, v in resp.headers:
             if k.lower() == "set-cookie":
                 c = SimpleCookie()
@@ -943,5 +943,5 @@ def generate_secret_key() -> str:
     return secrets.token_hex(32)
 
 
-# Évite que pytest prenne TestClient pour une classe de tests
+# Prevent pytest from collecting TestClient as a test class
 TestClient.__test__ = False  # type: ignore[attr-defined]

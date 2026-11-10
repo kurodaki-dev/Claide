@@ -1,4 +1,4 @@
-"""Serveur de développement multi-thread avec rechargement automatique."""
+"""Multi-threaded development server with auto-reload."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ def _snapshot(root: str) -> Dict[str, float]:
 
 
 def _run_with_reloader(root: str) -> None:
-    """Processus parent : relance le script dès qu'un fichier change."""
+    """Parent process: restart the script whenever a file changes."""
     while True:
         env = dict(os.environ, **{_CHILD_ENV: "1"})
         proc = subprocess.Popen([sys.executable, *sys.argv], env=env)
@@ -52,7 +52,7 @@ def _run_with_reloader(root: str) -> None:
             while proc.poll() is None:
                 time.sleep(0.7)
                 if _snapshot(root) != before:
-                    print("  ↻ Changement détecté, redémarrage...", file=sys.stderr)
+                    print("  ↻ Change detected, restarting...", file=sys.stderr)
                     proc.terminate()
                     proc.wait()
                     break
@@ -69,12 +69,12 @@ def run_server(app: Callable, host: str = "127.0.0.1", port: int = 8000, reload:
     main = sys.modules.get("__main__")
     can_reload = reload and getattr(main, "__file__", None) is not None
     if can_reload and os.environ.get(_CHILD_ENV) != "1":
-        print(f"\n  ✦ Claide sur http://{host}:{port}  (Ctrl+C pour arrêter, rechargement auto actif)\n",
+        print(f"\n  ✦ Claide sur http://{host}:{port}  (Ctrl+C to quit, auto-reload on)\n",
               file=sys.stderr)
         _run_with_reloader(root)
         return
     if not can_reload:
-        print(f"\n  ✦ Claide sur http://{host}:{port}  (Ctrl+C pour arrêter)\n", file=sys.stderr)
+        print(f"\n  ✦ Claide sur http://{host}:{port}  (Ctrl+C to quit)\n", file=sys.stderr)
     with make_server(host, port, app, server_class=_ThreadingWSGIServer, handler_class=_QuietHandler) as httpd:
         try:
             httpd.serve_forever()

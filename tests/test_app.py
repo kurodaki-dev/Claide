@@ -15,7 +15,7 @@ def app(tmp_path):
 
     @app.route("/")
     def home():
-        return Page("Accueil", Hero("Bonjour"))
+        return Page("Home", Hero("Hello"))
 
     @app.get("/user/<int:uid>")
     def user(uid, request):
@@ -24,8 +24,8 @@ def app(tmp_path):
     @app.route("/form", methods=["GET", "POST"])
     def form(request):
         if request.method == "POST":
-            return f"Merci {request.form['nom']}"
-        return Page("Form", Form(Field("Nom", "nom")))
+            return f"Thanks {request.form['name']}"
+        return Page("Form", Form(Field("Name", "name")))
 
     @app.post("/api/echo")
     def echo(request):
@@ -71,8 +71,8 @@ def test_params_and_json(app):
 
 def test_form_and_methods(app):
     c = app.test_client()
-    assert 'name="nom"' in c.get("/form").text
-    assert c.post("/form", data={"nom": "Léa"}).text == "Merci Léa"
+    assert 'name="name"' in c.get("/form").text
+    assert c.post("/form", data={"name": "Léa"}).text == "Thanks Léa"
     assert c.delete("/form").status == 405
 
 
@@ -85,7 +85,7 @@ def test_session(app):
     c = app.test_client()
     assert c.get("/count").text == "1"
     assert c.get("/count").text == "2"
-    c.cookies["claide_session"] = "falsifie.abc"
+    c.cookies["claide_session"] = "tampered.abc"
     assert c.get("/count").text == "1"
 
 
@@ -101,10 +101,10 @@ def test_errors_and_redirect(app):
 def test_error_handler(app):
     @app.errorhandler(404)
     def nf():
-        return Page("Perdu", t.h1("Perdu !"))
+        return Page("Lost", t.h1("Lost!"))
 
     r = app.test_client().get("/nope")
-    assert r.status == 404 and "Perdu !" in r.text
+    assert r.status == 404 and "Lost!" in r.text
 
 
 def test_static(app):
@@ -129,16 +129,16 @@ def test_hooks_layout_router(app):
     @app.before_request
     def block(request):
         if request.path == "/blocked":
-            return "non", 401
+            return "no", 401
 
     @app.layout
     def layout(page):
-        page.add(t.footer("pied"))
+        page.add(t.footer("bottom"))
 
     c = app.test_client()
     assert c.get("/v1/ping").json == {"pong": True}
     assert c.get("/blocked").status == 401
-    assert "<footer>pied</footer>" in c.get("/").text
+    assert "<footer>bottom</footer>" in c.get("/").text
     assert app.url_for("user", uid=3, q="a") == "/user/3?q=a"
 
 
