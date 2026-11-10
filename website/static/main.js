@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", () => copy(btn.dataset.copy, btn))
   );
 
-  document.querySelectorAll(".doc pre, .split pre").forEach((pre) => {
+  document.querySelectorAll(".doc pre, .two-col pre").forEach((pre) => {
     const btn = document.createElement("button");
     btn.className = "copy";
     btn.type = "button";

@@ -69,12 +69,12 @@ def run_server(app: Callable, host: str = "127.0.0.1", port: int = 8000, reload:
     main = sys.modules.get("__main__")
     can_reload = reload and getattr(main, "__file__", None) is not None
     if can_reload and os.environ.get(_CHILD_ENV) != "1":
-        print(f"\n  ✦ Claide sur http://{host}:{port}  (Ctrl+C to quit, auto-reload on)\n",
+        print(f"\n  Claide running on http://{host}:{port}  (Ctrl+C to quit, auto-reload on)\n",
               file=sys.stderr)
         _run_with_reloader(root)
         return
     if not can_reload:
-        print(f"\n  ✦ Claide sur http://{host}:{port}  (Ctrl+C to quit)\n", file=sys.stderr)
+        print(f"\n  Claide running on http://{host}:{port}  (Ctrl+C to quit)\n", file=sys.stderr)
     with make_server(host, port, app, server_class=_ThreadingWSGIServer, handler_class=_QuietHandler) as httpd:
         try:
             httpd.serve_forever()
