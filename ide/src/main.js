@@ -32,7 +32,7 @@ function cycleTheme() {
 
 /* ----------------------------------------------------------------- engine */
 const engine = { ready: false, version: "", error: null, listeners: new Set() };
-const worker = new Worker("worker.js", { type: "module" });
+const worker = window.claideEngine || new Worker("worker.js", { type: "module" });
 let seq = 0;
 const pending = new Map();
 worker.onmessage = (e) => {

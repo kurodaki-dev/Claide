@@ -63,6 +63,8 @@ jobs:
       - run: npm run build
       - name: Create the Android project
         run: npx cap add android
+      - name: Full screen
+        run: node scripts/android-fullscreen.mjs
       - name: Generate the app icon and splash screen
         run: npx --yes @capacitor/assets@4.0.0 generate --android --assetPath resources
       - name: Build the APK

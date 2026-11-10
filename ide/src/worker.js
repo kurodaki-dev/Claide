@@ -8,23 +8,41 @@ const ready = start();
 
 function post(msg) { self.postMessage(msg); }
 
+// ---- startup ---------------------------------------------------------------
+// Starting Python and importing Claide is what takes time. The build saves the
+// interpreter memory right after that point (engine.snapshot); restoring it is
+// several times faster. If it can't be used, Python starts the normal way.
+function writeClaide(bundle) {
+  py.FS.mkdirTree("/lib/claide");
+  for (const [name, code] of Object.entries(bundle.files)) py.FS.writeFile(`/lib/claide/${name}`, code);
+  py.FS.writeFile("/lib/claide_ide_bridge.py", bundle.bridge);
+}
+
 async function start() {
-  py = await loadPyodide({
+  const t0 = performance.now();
+  const options = {
     indexURL: new URL("./pyodide/", import.meta.url).href,
     stdout: (text) => post({ type: "log", stream: "out", text }),
     stderr: (text) => post({ type: "log", stream: "err", text }),
-  });
-  const manifest = await (await fetch(new URL("./claide/manifest.json", import.meta.url))).json();
-  py.FS.mkdirTree("/lib/claide");
-  for (const name of manifest.files) {
-    const code = await (await fetch(new URL(`./claide/${name}`, import.meta.url))).text();
-    py.FS.writeFile(`/lib/claide/${name}`, code);
+  };
+  const bundle = await (await fetch(new URL("./claide/bundle.json", import.meta.url))).json();
+  let restored = false;
+  try {
+    const res = await fetch(new URL("./engine.snapshot", import.meta.url));
+    if (!res.ok) throw new Error("no snapshot");
+    const snapshot = new Uint8Array(await res.arrayBuffer());
+    py = await loadPyodide({ ...options, _loadSnapshot: snapshot });
+    writeClaide(bundle); // still needed for modules imported later
+    bridge = py.pyimport("claide_ide_bridge");
+    py.runPython("import random; random.seed()"); // the snapshot froze the random state
+    restored = true;
+  } catch {
+    py = await loadPyodide(options);
+    writeClaide(bundle);
+    py.runPython("import sys; sys.path.insert(0, '/lib')");
+    bridge = py.pyimport("claide_ide_bridge");
   }
-  py.runPython("import sys; sys.path.insert(0, '/lib')");
-  const code = await (await fetch(new URL("./bridge.py", import.meta.url))).text();
-  py.FS.writeFile("/lib/claide_ide_bridge.py", code);
-  bridge = py.pyimport("claide_ide_bridge");
-  post({ type: "ready", version: manifest.version });
+  post({ type: "ready", version: bundle.version, restored, ms: Math.round(performance.now() - t0) });
 }
 
 function rmTree(path) {
