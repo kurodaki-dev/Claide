@@ -205,8 +205,9 @@ def home():
         t.section(t.div(
             t.div(
                 t.h2("Components"),
-                t.p("The first six ship with Claide and work offline. The others are taken "
-                    "from the Uiverse archive the first time they are used, then cached.",
+                t.p("The first six ship with Claide. The others come from Uiverse: they are "
+                    "downloaded once into a templates folder next to your code, where you can "
+                    "edit them.",
                     class_="section-note"),
                 class_="band-head",
             ),

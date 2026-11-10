@@ -20,7 +20,8 @@ TAILWIND = """<!-- From Uiverse.io by tw  - Tags: card -->
 
 @pytest.fixture(autouse=True)
 def fake_github(monkeypatch, tmp_path):
-    monkeypatch.setenv("CLAIDE_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("CLAIDE_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("CLAIDE_TEMPLATES_DIR", str(tmp_path / "templates"))
     calls = []
 
     def fake_download(url, timeout):
@@ -125,3 +126,56 @@ def test_two_scoped_components_do_not_conflict():
     assert a.scope != b.scope
     html = Page("x", a, b).render()
     assert f".{a.scope} .b {{ color: red }}" in html and f".{b.scope} .b {{ color: blue }}" in html
+
+
+def test_downloaded_component_is_saved_in_templates(fake_github, tmp_path):
+    tpl = UITemplate("https://uiverse.io/someone/cool-cat-1")
+    local = tmp_path / "templates" / "someone_cool-cat-1.html"
+    assert local.exists() and tpl.path == str(local)
+    content = local.read_text()
+    assert "https://uiverse.io/someone/cool-cat-1" in content and "Category: Buttons" in content
+    assert ".cta { color: red; }" in content
+
+
+def test_local_copy_is_used_and_can_be_edited(fake_github, tmp_path):
+    UITemplate("someone/cool-cat-1")
+    local = tmp_path / "templates" / "someone_cool-cat-1.html"
+    local.write_text(local.read_text().replace("color: red", "color: purple"))
+    # even without the cache and without network, the edited local file wins
+    import shutil
+    shutil.rmtree(tmp_path / "cache")
+    fake_github.clear()
+    tpl = UITemplate("someone/cool-cat-1")
+    assert fake_github == []
+    assert "color: purple" in tpl.css and tpl.category == "Buttons"
+    assert tpl.tags == ["button", "hover"]
+    assert "<!--" not in tpl.html  # the header comment is not rendered
+
+
+def test_save_false_and_custom_folder(fake_github, tmp_path):
+    UITemplate("someone/cool-cat-1", save=False)
+    assert not (tmp_path / "templates").exists()
+    UITemplate("someone/cool-cat-1", folder=str(tmp_path / "ui"))
+    assert (tmp_path / "ui" / "someone_cool-cat-1.html").exists()
+
+
+def test_save_and_local(tmp_path):
+    path = UITemplate.builtin("glow", "Send").save()
+    assert path.endswith("glow.html")
+    again = UITemplate.local("glow")
+    assert "Send" in again.html and ".cl-glow" in again.css
+    UITemplate(html="<b class='x'>Hi</b>", css=".x{color:red}").save("my-badge")
+    assert ".x{color:red}" in UITemplate.local("my-badge").css
+    with pytest.raises(UITemplateError):
+        UITemplate.local("nothing-here")
+
+
+def test_templates_dir_is_next_to_the_calling_file(monkeypatch, tmp_path):
+    from claide.uitemplate import templates_dir
+
+    monkeypatch.delenv("CLAIDE_TEMPLATES_DIR")
+    code = "from claide.uitemplate import templates_dir\nresult = templates_dir()"
+    ns = {"__file__": str(tmp_path / "site" / "app.py")}
+    exec(compile(code, ns["__file__"], "exec"), ns)
+    assert ns["result"] == str(tmp_path / "site" / "templates")
+    assert templates_dir(str(tmp_path / "x")) == str(tmp_path / "x")

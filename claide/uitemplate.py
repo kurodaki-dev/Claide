@@ -28,13 +28,15 @@ import copy
 import hashlib
 import os
 import re
+import sys
+import sysconfig
 import urllib.error
 import urllib.request
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from .html import Asset, escape, render_attrs
 
-__all__ = ["UITemplate", "UITemplateError", "CATEGORIES", "builtin_templates"]
+__all__ = ["UITemplate", "UITemplateError", "CATEGORIES", "builtin_templates", "templates_dir"]
 
 GALAXY_RAW = "https://raw.githubusercontent.com/uiverse-io/galaxy/main"
 TAILWIND_CDN = "https://cdn.tailwindcss.com"
@@ -147,6 +149,49 @@ def fetch_uiverse_source(author: str, name: str, category: Optional[str] = None,
     raise UITemplateError(
         f"Component not found: {author}/{name}. Check the URL on uiverse.io "
         "(very recent elements can take a while to be archived)."
+    )
+
+
+#: Name of the folder where Uiverse components are saved, next to your code.
+TEMPLATES_FOLDER = "templates"
+_LOCAL_CATEGORY_RE = re.compile(r"Category:\s*([\w-]+)")
+_PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
+_STDLIB_DIRS = tuple(
+    os.path.abspath(p) for p in {sysconfig.get_paths().get("stdlib"), sysconfig.get_paths().get("platstdlib")} if p
+)
+
+
+def templates_dir(folder: Optional[str] = None) -> str:
+    """Folder where Uiverse components are saved and looked up.
+
+    In order: the ``folder`` argument, the ``CLAIDE_TEMPLATES_DIR`` environment
+    variable, then a ``templates`` folder next to the Python file that uses the
+    component (or in the current folder).
+    """
+    if folder:
+        return os.path.abspath(folder)
+    env = os.environ.get("CLAIDE_TEMPLATES_DIR")
+    if env:
+        return os.path.abspath(env)
+    frame = sys._getframe(1)
+    while frame is not None:
+        filename = frame.f_globals.get("__file__")
+        if filename:
+            path = os.path.abspath(filename)
+            inside_claide = path.startswith(_PACKAGE_DIR + os.sep)
+            inside_stdlib = any(path.startswith(d + os.sep) for d in _STDLIB_DIRS)
+            if not inside_claide and not inside_stdlib:
+                return os.path.join(os.path.dirname(path), TEMPLATES_FOLDER)
+        frame = frame.f_back
+    return os.path.join(os.getcwd(), TEMPLATES_FOLDER)
+
+
+def _local_header(author: str, name: str, category: str) -> str:
+    return (
+        f"<!-- Uiverse.io component by {author}: https://uiverse.io/{author}/{name}\n"
+        f"     Category: {category}. License: MIT (please credit the author).\n"
+        "     Saved by Claide. Edit this file freely: it is used instead of downloading\n"
+        "     the component again. Delete it to get the original back. -->\n"
     )
 
 
@@ -285,20 +330,41 @@ class UITemplate:
         tailwind: Optional[bool] = None,
         use_cache: bool = True,
         timeout: float = 10.0,
+        save: bool = True,
+        folder: Optional[str] = None,
     ) -> None:
         self.author: Optional[str] = None
         self.name: Optional[str] = None
         self.category: Optional[str] = _normalize_category(category)
         self.tags: List[str] = []
         self.scope: Optional[str] = None  # wrapper class set by .scoped()
+        self.path: Optional[str] = None   # local file of a Uiverse component
 
         if ref is not None:
             if html is not None:
                 raise UITemplateError("Pass either a Uiverse id or html=..., not both.")
             self.author, self.name = parse_uiverse_id(ref)
-            self.category, source = fetch_uiverse_source(
-                self.author, self.name, self.category, use_cache=use_cache, timeout=timeout
-            )
+            local = os.path.join(templates_dir(folder), f"{self.author}_{self.name}.html")
+            if save and os.path.isfile(local):
+                # Already downloaded (and maybe edited): use the local copy.
+                with open(local, encoding="utf-8") as f:
+                    source = f.read()
+                found = _LOCAL_CATEGORY_RE.search(source)
+                if found and not self.category:
+                    self.category = found.group(1)
+                self.path = local
+            else:
+                self.category, source = fetch_uiverse_source(
+                    self.author, self.name, self.category, use_cache=use_cache, timeout=timeout
+                )
+                if save:
+                    try:
+                        os.makedirs(os.path.dirname(local), exist_ok=True)
+                        with open(local, "w", encoding="utf-8") as f:
+                            f.write(_local_header(self.author, self.name, self.category) + source)
+                        self.path = local
+                    except OSError:
+                        pass  # read-only folder: the component still works from the cache
             credit = _CREDIT_RE.search(source)
             if credit and credit.group(2):
                 self.tags = [t.strip() for t in credit.group(2).split(",") if t.strip()]
@@ -335,6 +401,42 @@ class UITemplate:
         """Load a component from an .html file (HTML + <style> + <script>)."""
         with open(path, encoding="utf-8") as f:
             return cls.from_source(f.read(), **kwargs)
+
+    @classmethod
+    def local(cls, name: str, folder: Optional[str] = None, **kwargs: Any) -> "UITemplate":
+        """Load ``templates/<name>.html``: ``UITemplate.local("my-button")``.
+
+        Works with your own components and with saved Uiverse ones
+        (``UITemplate.local("0x-Sarthak_hungry-penguin-30")``).
+        """
+        base = templates_dir(folder)
+        path = os.path.join(base, name if name.endswith(".html") else f"{name}.html")
+        if not os.path.isfile(path):
+            raise UITemplateError(f"No template named {name!r} in {base}")
+        tpl = cls.from_file(path, **kwargs)
+        tpl.name, tpl.path = os.path.splitext(os.path.basename(path))[0], path
+        return tpl
+
+    def save(self, name: Optional[str] = None, folder: Optional[str] = None) -> str:
+        """Write the component to ``templates/<name>.html`` and return the path.
+
+        Reload it later with ``UITemplate.local(name)``.
+        """
+        if name is None:
+            if not self.name:
+                raise UITemplateError("Give the template a name: .save(\"my-button\")")
+            name = f"{self.author}_{self.name}" if self.author and self.author != "claide" else self.name
+        path = os.path.join(templates_dir(folder), name if name.endswith(".html") else f"{name}.html")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        parts = [self.html]
+        if self.css:
+            parts.append(f"<style>\n{self.css}\n</style>")
+        if self.js:
+            parts.append(f"<script>\n{self.js}\n</script>")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n\n".join(parts) + "\n")
+        self.path = path
+        return path
 
     @classmethod
     def builtin(cls, name: str, label: Optional[str] = None) -> "UITemplate":
