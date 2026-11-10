@@ -1,5 +1,11 @@
 # Layout components
 
+## The default theme
+
+Sites written with `@route` / `run()` use a built-in **classless theme**: plain HTML (headings, text, links, forms, buttons, tables, code) looks clean without a single CSS class, in light and dark mode. Enable it on your own app with `App(theme=True)`. It only styles bare elements with low priority, so your `static/style.css` overrides it easily.
+
+## Ready-made blocks
+
 `claide.components` provides ready-made building blocks with a clean default style. Their CSS is included automatically.
 
 ```python

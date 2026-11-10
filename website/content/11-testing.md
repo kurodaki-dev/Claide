@@ -3,7 +3,7 @@
 `app.test_client()` sends requests to your app without starting a server. It keeps cookies between requests, so sessions work.
 
 ```python
-from app import app
+from app import app        # with the shortcuts, end app.py with:  app = run()
 
 def test_home():
     client = app.test_client()

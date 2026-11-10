@@ -10,67 +10,53 @@ from typing import List, Optional
 
 from . import __version__
 
-APP_TEMPLATE = '''from claide import App, Page, UITemplate, tags as t
-from claide.components import Navbar, Hero, Section, Grid, Card, Footer, Form, Field, Alert
-
-app = App(__name__, secret_key="{secret}")
-app.css(app.static("style.css"))
-app.js(app.static("script.js"))
-
-NAV = Navbar("{name}", [("Home", "/"), ("Contact", "/contact")])
-button = UITemplate.builtin("gradient", "Get started")
+APP_TEMPLATE = '''from claide import *
 
 
-@app.layout
+@layout
 def base(page):
-    page.body.children.insert(0, NAV)
-    page.add(Footer("Made with Claide 🐍"))
+    page.body.children.insert(0, nav(ul(li(a("Home", href="/")), li(a("Contact", href="/contact")))))
 
 
-@app.route("/")
-def home(request):
+@route("/")
+def home():
     visits = request.session.get("visits", 0) + 1
     request.session["visits"] = visits
-    return Page(
-        "{name}",
-        Hero("Welcome to {name}", f"You have been here {{visits}} time(s).", button.link("/contact")),
-        Section(
-            Grid(
-                Card("Fast", "100% Python, zero dependencies."),
-                Card("Complete", "Routes, forms, APIs, sessions."),
-                Card("Pretty", "Uiverse.io components built in."),
-            ),
-            title="Why Claide?",
-        ),
+    return (
+        h1("Welcome to {name}"),
+        p(f"You have been here {{visits}} time(s)."),
+        md("""
+            Edit **app.py** and save: the page reloads by itself.
+            Your CSS goes in **static/style.css**, your JavaScript in **static/script.js**.
+        """),
+        ui.builtin("gradient", "Contact me").link("/contact"),
     )
 
 
-@app.route("/contact", methods=["GET", "POST"])
-def contact(request):
-    message = None
+@route("/contact")
+def contact(name: str = "", message: str = ""):
     if request.method == "POST":
-        message = Alert(f"Thanks {{request.form.get('name', '')}}!", "success")
-    return Page("Contact", Section(
-        message,
-        Form(Field("Name", "name", required=True), Field("Message", "message", type="textarea")),
-        title="Contact",
-    ))
+        return h1(f"Thanks {{name}}!"), p("Your message was received.")
+    return h1("Contact"), form(
+        label("Name", input_(name="name", required=True)),
+        label("Message", textarea(name="message", rows=5)),
+        button("Send"),
+        method="post",
+    )
 
 
-@app.get("/api/hello/<name>")
+@get("/api/hello/<name>")
 def api_hello(name):
     return {{"message": f"Hello {{name}}!"}}
 
 
-if __name__ == "__main__":
-    app.run()
+run()
 '''
 
-CSS_TEMPLATE = """/* Your CSS here */
-:root { --cl-primary: #6366f1; }
+CSS_TEMPLATE = """/* Your CSS here. It is linked on every page automatically. */
 """
 
-JS_TEMPLATE = """// Your JavaScript here
+JS_TEMPLATE = """// Your JavaScript here. It is loaded on every page automatically.
 console.log("Claide is ready");
 """
 
@@ -83,21 +69,23 @@ def _load_app(target: str):
         module_name = module_name[:-3].replace(os.sep, ".").replace("/", ".")
     module = importlib.import_module(module_name)
     app = getattr(module, attr or "app", None)
+    if app is None and not attr:
+        from . import quick
+
+        app = quick._app  # site written with @route / run() shortcuts
     if app is None:
         raise SystemExit(f"No object '{attr or 'app'}' in {module_name}")
     return app
 
 
 def cmd_new(args: argparse.Namespace) -> None:
-    import secrets
-
     root = args.name
     if os.path.exists(root) and os.listdir(root):
         raise SystemExit(f"The folder '{root}' already exists and is not empty.")
     os.makedirs(os.path.join(root, "static"), exist_ok=True)
     name = os.path.basename(os.path.abspath(root))
     files = {
-        "app.py": APP_TEMPLATE.format(name=name, secret=secrets.token_hex(16)),
+        "app.py": APP_TEMPLATE.format(name=name),
         os.path.join("static", "style.css"): CSS_TEMPLATE,
         os.path.join("static", "script.js"): JS_TEMPLATE,
     }

@@ -3,29 +3,30 @@
 ## Routes
 
 ```python
-from claide import App
+from claide import *
 
-app = App(__name__)
-
-@app.route("/")                          # GET by default
+@route("/")                  # GET and POST
 def home(): ...
 
-@app.route("/contact", methods=["GET", "POST"])
-def contact(request): ...
+@get("/items")               # GET only
+def items(): ...
 
-@app.get("/items")
-@app.post("/items")                      # also: put, patch, delete
-def items(request): ...
+@post("/items")              # POST only (also: put, delete)
+def add_item(): ...
+
+run()
 ```
+
+With an `App` object, use `@app.route(path, methods=[...])`, `@app.get`, `@app.post`, `@app.put`, `@app.patch` and `@app.delete`. `@app.route` accepts only GET unless you list other methods.
 
 ## URL parameters
 
 ```python
-@app.get("/user/<int:uid>")
+@get("/user/<int:uid>")
 def user(uid):
-    return f"User {uid}"
+    return h1(f"User {uid}")
 
-@app.get("/files/<path:filepath>")
+@get("/files/<path:filepath>")
 def files(filepath): ...
 ```
 
@@ -39,13 +40,34 @@ def files(filepath): ...
 
 Build URLs from function names with `app.url_for("user", uid=3)` → `/user/3`. Extra arguments become the query string.
 
-## The request object
+## Form and query values as parameters
 
-Add a `request` parameter to your function to receive it. URL parameters are passed by name.
+Any parameter that is not part of the URL is looked up in the form, the JSON body, then the query string:
 
 ```python
-@app.post("/search/<category>")
-def search(category, request):
+@route("/signup")
+def signup(email: str, age: int = 18, newsletter: bool = False):
+    ...
+```
+
+| Declaration | Behavior |
+|---|---|
+| `email` (no default) | required: a `400` error is returned when it is missing |
+| `age: int = 18` | optional, converted to `int` (`400` if it isn't a number) |
+| `newsletter: bool = False` | `"on"`, `"true"`, `"1"`, `"yes"` give `True`; an unchecked checkbox gives `False` |
+| `photo` | an uploaded file (`UploadedFile`) when the form sends one |
+
+Supported conversions: `str`, `int`, `float` and `bool`.
+
+## The request object
+
+`request` can be imported from `claide` and used anywhere inside a route. You can also receive it as a parameter named `request`.
+
+```python
+from claide import request
+
+@post("/search/<category>")
+def search(category):
     request.method        # "POST"
     request.path          # "/search/books"
     request.args["q"]     # query string  ?q=...
@@ -65,8 +87,9 @@ For fields sent several times (checkboxes, multi-selects), use `request.form.get
 Group routes and mount them with a prefix:
 
 ```python
-from claide import Router
+from claide import App, Router
 
+app = App(__name__)
 api = Router("/api")
 
 @api.get("/users")

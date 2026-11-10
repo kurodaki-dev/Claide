@@ -1,4 +1,7 @@
-"""Tiny Markdown -> Claide converter used by the documentation site.
+"""Small Markdown converter.
+
+    from claide import md
+    page.add(md("# Title\n\nSome **bold** text and a [link](/about)."))
 
 Supports: #/##/### headings, paragraphs, fenced code blocks, inline code,
 **bold**, *italic*, [links](url), - / 1. lists, > callouts and pipe tables.
@@ -9,7 +12,9 @@ from __future__ import annotations
 import re
 from typing import Callable, List, Tuple
 
-from claide import escape, raw
+from .html import Raw, escape, raw
+
+__all__ = ["md", "render", "slugify"]
 
 _INLINE_CODE = re.compile(r"`([^`]+)`")
 _LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
@@ -109,3 +114,14 @@ def render(source: str, url: Callable[[str], str] = lambda u: u) -> Tuple[str, s
             i += 1
         out.append(f"<p>{inline(' '.join(para), url)}</p>")
     return title, raw("\n".join(out)), toc
+
+
+def md(text: str, url: Callable[[str], str] = lambda u: u) -> Raw:
+    """Convert Markdown text to HTML that can be added to a page.
+
+    Common indentation is removed, so a triple-quoted string inside a
+    function works as expected.
+    """
+    import textwrap
+
+    return render(textwrap.dedent(text), url)[1]

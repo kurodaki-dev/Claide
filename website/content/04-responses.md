@@ -4,20 +4,24 @@
 
 | Return value | Result |
 |---|---|
-| `Page(...)` | full HTML page |
-| an element, a `UITemplate` | wrapped in a page automatically |
+| one or several elements: `h1(...), p(...)` | a page; its title is the text of the first `<h1>` |
+| a list of elements | a page |
+| `Page(...)` | full HTML page, with the title you choose |
+| a `UITemplate` or `md(...)` | wrapped in a page automatically |
 | `str` / `bytes` | sent as HTML |
-| `dict` / `list` | JSON (`application/json`) |
+| `dict` / `list` of data | JSON (`application/json`) |
 | `None` | `204 No Content` |
 | a generator | streamed response |
 | `Response(...)` | sent as is |
 | `(body, status)` or `(body, status, headers)` | custom status and headers |
 
 ```python
-@app.post("/api/items")
-def create(request):
-    return {"id": 42}, 201
+@post("/api/items")
+def create(name: str):
+    return {"id": 42, "name": name}, 201
 ```
+
+A tuple whose second item is a number is read as `(body, status)`. Any other tuple is a list of elements to put in the page.
 
 ## Redirects and errors
 
