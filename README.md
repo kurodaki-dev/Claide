@@ -1,4 +1,8 @@
-# Claide ✦
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kurodaki-dev/Claide/main/logo.svg" alt="Claide logo" width="96">
+</p>
+
+# Claide
 
 **Build complete websites in Python, from A to Z**: HTML pages, dynamic routes,
 forms, file uploads, JSON APIs, sessions, your own `style.css` / `script.js`, and

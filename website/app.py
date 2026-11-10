@@ -73,7 +73,8 @@ def header(active: str = "") -> Element:
              ("GitHub", REPO, ""), ("PyPI", PYPI, "")]
     return t.header(
         t.div(
-            t.a("claide", href=url("/"), class_="wordmark"),
+            t.a(t.img(src=app.static("logo.svg"), alt="", width="26", height="26"), "claide",
+                href=url("/"), class_="wordmark", aria_label="Claide home"),
             t.span(f"v{__version__}", class_="version"),
             t.nav(t.ul([
                 t.li(t.a(label, href=href, aria_current="page" if key and key == active else None))
