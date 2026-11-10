@@ -148,3 +148,20 @@ def test_build(app, tmp_path):
     assert (out / "index.html").exists()
     assert (out / "form" / "index.html").exists()
     assert (out / "static" / "style.css").exists()
+
+
+def test_base_path(tmp_path):
+    app = App("t", root=str(tmp_path), base_path="Claide/")
+
+    @app.get("/docs/<slug>")
+    def doc(slug):
+        return slug
+
+    assert app.url("/") == "/Claide/"
+    assert app.url("/docs") == "/Claide/docs"
+    assert app.url("https://x.io") == "https://x.io"
+    assert app.static("a.css") == "/Claide/static/a.css"
+    assert app.url_for("doc", slug="intro") == "/Claide/docs/intro"
+    c = app.test_client()
+    assert c.get("/Claide/docs/intro").text == "intro"
+    assert c.get("/docs/intro").text == "intro"

@@ -98,3 +98,30 @@ def test_manual_and_builtin():
 def test_import_style():
     from claide import uitemplate
     assert uitemplate.UITemplate is UITemplate
+
+
+def test_scoped_isolates_css():
+    tpl = UITemplate(
+        html='<div id="timer"><button>Go</button></div>',
+        css="button { color: red }\n#timer { animation: spin 1s }\n@keyframes spin { to { opacity: 0 } }\n"
+            "@media (max-width: 9px) { button, body .x { margin: 0 } }",
+    ).scoped()
+    scope = tpl.scope
+    assert scope and scope.startswith("u")
+    assert f".{scope} button {{ color: red }}" in tpl.css
+    assert f"animation: {scope}-spin 1s" in tpl.css
+    assert f"@keyframes {scope}-spin" in tpl.css
+    assert f".{scope} button, .{scope} .x" in tpl.css
+    html = tpl.render()
+    assert html.startswith(f'<div class="{scope}" style="display:contents">')
+    # customization still targets the component root, not the wrapper
+    assert '<div id="timer" title="t">' in tpl.attrs(title="t").render()
+    assert f".{scope} button {{ color: blue }}" in tpl.add_css("button { color: blue }").css
+
+
+def test_two_scoped_components_do_not_conflict():
+    a = UITemplate(html="<button class='b'>A</button>", css=".b { color: red }").scoped()
+    b = UITemplate(html="<button class='b'>B</button>", css=".b { color: blue }").scoped()
+    assert a.scope != b.scope
+    html = Page("x", a, b).render()
+    assert f".{a.scope} .b {{ color: red }}" in html and f".{b.scope} .b {{ color: blue }}" in html
