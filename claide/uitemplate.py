@@ -456,6 +456,7 @@ class UITemplate:
 
     # -- customization -----------------------------------------------------
     def copy(self) -> "UITemplate":
+        """Independent copy of the component."""
         return copy.copy(self)
 
     def text(self, old: str, new: Optional[str] = None) -> "UITemplate":
@@ -524,6 +525,7 @@ class UITemplate:
         return tpl
 
     def add_js(self, js: str) -> "UITemplate":
+        """Add JavaScript to the component."""
         tpl = self.copy()
         tpl.js = (tpl.js + "\n" + js).strip()
         return tpl
@@ -585,6 +587,7 @@ class UITemplate:
     # -- render ---------------------------------------------------------------
     @property
     def credit(self) -> str:
+        """Credit line for the Uiverse author ("From Uiverse.io by ...")."""
         if self.author and self.author != "claide":
             return f"From Uiverse.io by {self.author} (MIT)"
         return ""
@@ -604,6 +607,7 @@ class UITemplate:
         return self.html
 
     def render(self) -> str:
+        """HTML of the component."""
         return self.__html__()
 
     __str__ = render

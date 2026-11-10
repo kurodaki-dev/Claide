@@ -19,7 +19,8 @@ Get the latest version from the [releases page](https://github.com/kurodaki-dev/
 ## What you get
 
 - **Projects**: create one from the starter template, start from an empty `app.py`, or import a `.zip`. On Windows and Linux, **Open folder** edits a project folder on your disk directly, so you can also run it with `python app.py`.
-- **Editor**: Python, CSS, JavaScript and HTML, with indentation, search (`Ctrl+F`), multiple cursors and code folding.
+- **Editor**: Python, CSS, JavaScript and HTML in color (a palette for the light theme and one for the dark theme), with indentation, search (`Ctrl+F`), multiple cursors and code folding.
+- **Suggestions while you type**: every Claide name with its signature and description (`route`, `request`, `md`, `ui`, all the HTML tags...), the members of `request.` and `ui.`, and ready-made pieces of code: type `route`, `form`, `get`, `post`, `layout`, `md` or `claide` and press `Enter`, then `Tab` to go from one field to fill to the next. The list is generated from Claide itself, so it always matches the version inside the app.
 - **Live preview**: the site reloads a moment after you stop typing (or press `Ctrl+Enter`). Links, forms, sessions and `fetch()` calls work inside the preview. Pick a page from the **Pages** list or type an address.
 - **Console**: `print()` output and errors, with the file and line that caused them.
 - **Several files**: add files under `routes/` and their routes appear immediately.
@@ -37,6 +38,8 @@ Get the latest version from the [releases page](https://github.com/kurodaki-dev/
 | `Ctrl+F` | search in the file |
 | `Tab` / `Shift+Tab` | indent / unindent |
 | `Ctrl+/` | comment the line |
+| `Ctrl+Space` | show the suggestions |
+| `Enter` / `Tab` | accept a suggestion / go to the next field of a snippet |
 
 ## Where are my projects?
 

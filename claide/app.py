@@ -126,6 +126,7 @@ class Request:
     # -- headers -------------------------------------------------------------
     @property
     def headers(self) -> Dict[str, str]:
+        """Request headers, e.g. ``request.headers.get("User-Agent")``."""
         h = {}
         for k, v in self.environ.items():
             if k.startswith("HTTP_"):
@@ -138,24 +139,29 @@ class Request:
 
     @property
     def content_type(self) -> str:
+        """Content-Type of the request body."""
         return self.environ.get("CONTENT_TYPE", "") or ""
 
     @property
     def host(self) -> str:
+        """Host name of the site, e.g. ``"example.com"``."""
         return self.environ.get("HTTP_HOST") or self.environ.get("SERVER_NAME", "")
 
     @property
     def url(self) -> str:
+        """Full address of the request, with the query string."""
         scheme = self.environ.get("wsgi.url_scheme", "http")
         qs = f"?{self.query_string}" if self.query_string else ""
         return f"{scheme}://{self.host}{quote(self.path)}{qs}"
 
     @property
     def remote_addr(self) -> str:
+        """IP address of the visitor."""
         return self.environ.get("REMOTE_ADDR", "")
 
     @property
     def is_json(self) -> bool:
+        """True when the request body is JSON."""
         return "json" in self.content_type
 
     # -- data ----------------------------------------------------------------
@@ -170,6 +176,7 @@ class Request:
 
     @property
     def body(self) -> bytes:
+        """Raw request body (bytes)."""
         if self._body is None:
             try:
                 length = int(self.environ.get("CONTENT_LENGTH") or 0)
@@ -184,6 +191,7 @@ class Request:
 
     @property
     def text(self) -> str:
+        """Request body decoded as text."""
         return self.body.decode("utf-8", errors="replace")
 
     @property
@@ -247,6 +255,7 @@ class Request:
 
     @property
     def cookies(self) -> Dict[str, str]:
+        """Cookies sent by the browser, as a dict."""
         jar = SimpleCookie()
         try:
             jar.load(self.environ.get("HTTP_COOKIE", ""))
@@ -331,6 +340,7 @@ class HTTPError(Exception):
 
 
 def abort(status: int, message: Optional[str] = None) -> None:
+    """Stop the request with an HTTP error page: ``abort(404)``, ``abort(403, "Admins only")``."""
     raise HTTPError(status, message)
 
 
@@ -426,6 +436,7 @@ class Response:
 
 
 def redirect(location: str, status: int = 302) -> Response:
+    """Send the visitor to another address: ``return redirect("/thanks")``."""
     return Response(b"", status, {"Location": location})
 
 
