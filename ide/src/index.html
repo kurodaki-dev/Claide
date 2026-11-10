@@ -10,6 +10,10 @@
 </head>
 <body>
 <div id="app"></div>
+<script>
+  // Start the Python engine first, in parallel with loading the interface.
+  window.claideEngine = new Worker("worker.js", { type: "module" });
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -25,7 +25,8 @@ Get the latest version from the [releases page](https://github.com/kurodaki-dev/
 - **Several files**: add files under `routes/` and their routes appear immediately.
 - **Uiverse components**: `ui("author/name")` downloads the component once into `templates/`, where you can edit it.
 - **Export**: download the project as a `.zip`, ready to run with `python app.py`.
-- **Light and dark themes** (follows your system by default), and a layout for phones with **Files**, **Code** and **Preview** tabs.
+- **Fast start**: Python is prepared when the app is built and restored in a fraction of a second when it opens, even the very first time.
+- **Light and dark themes** (follows your system by default), and a layout for phones with **Files**, **Code** and **Preview** tabs. On Android the app runs full screen: swipe from the top or bottom edge to see the system bars for a moment.
 
 ## Shortcuts
 

@@ -10,6 +10,13 @@ import traceback
 import claide
 from claide import quick, uitemplate
 
+# Imported now so they are part of the engine snapshot (faster first run).
+import claide.cli  # noqa: E402,F401
+import claide.components  # noqa: E402,F401
+import claide.markdown  # noqa: E402,F401
+import claide.theme  # noqa: E402,F401
+import importlib.util  # noqa: E402,F401
+
 PROJECT = "/project"
 _state = {"app": None, "client": None, "modules": set()}
 

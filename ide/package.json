@@ -1,7 +1,7 @@
 {
   "name": "claide-ide",
   "productName": "Claide IDE",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Write, run and preview Claide websites. Python runs inside the app.",
   "author": "kurodaki-dev",
   "license": "MIT",
@@ -12,7 +12,8 @@
     "start": "npm run build && electron .",
     "dist:win": "npm run build && electron-builder --win --publish never",
     "dist:linux": "npm run build && electron-builder --linux --publish never",
-    "android:sync": "npm run build && cap sync android"
+    "android:sync": "npm run build && cap sync android",
+    "android:add": "npm run build && cap add android && node scripts/android-fullscreen.mjs"
   },
   "devDependencies": {
     "@capacitor/android": "^8.6.0",
