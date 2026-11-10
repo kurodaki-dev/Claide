@@ -85,10 +85,15 @@ page.add(
 - `UITemplate(html="...", css="...")` or `UITemplate.from_file("button.html")` for your own code.
 - `UITemplate.builtin("glow", "Send")`: bundled components that work offline
   (`gradient`, `glow`, `slide`, `pushable`, `spinner`, `toggle`, `card`).
-- Components are downloaded from the official `uiverse-io/galaxy` repository
-  (MIT license) and cached in `~/.cache/claide`.
+- Components are downloaded from the official `uiverse-io/galaxy` repository (MIT license)
+  and **saved in a `templates/` folder** next to your code, e.g.
+  `templates/0x-Sarthak_hungry-penguin-30.html`. After that the local file is used: your site
+  works offline, the components are versioned with your project, and you can edit the file to
+  customize the component (delete it to get the original back).
+- `UITemplate.local("my-button")` loads your own `templates/my-button.html`;
+  `.save("name")` writes any component there.
 
-From the command line: `claide ui author/name --preview` or `--save button.html`.
+From the command line: `claide ui author/name` downloads a component into `./templates`.
 
 ## Linking your CSS / JS files
 

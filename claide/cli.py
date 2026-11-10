@@ -110,19 +110,21 @@ def cmd_build(args: argparse.Namespace) -> None:
 
 
 def cmd_ui(args: argparse.Namespace) -> None:
-    from .uitemplate import UITemplate
+    from .uitemplate import TEMPLATES_FOLDER, UITemplate
 
-    tpl = UITemplate(args.ref, category=args.category)
+    folder = args.folder or os.path.join(os.getcwd(), TEMPLATES_FOLDER)
+    tpl = UITemplate(args.ref, category=args.category, folder=folder)
     if args.save:
         with open(args.save, "w", encoding="utf-8") as f:
             f.write(tpl.html + "\n\n<style>\n" + tpl.css + "\n</style>\n")
             if tpl.js:
                 f.write("\n<script>\n" + tpl.js + "\n</script>\n")
         print(f"Saved to {args.save}")
-    elif args.preview:
+    if tpl.path:
+        print(f"Component saved in {os.path.relpath(tpl.path)}")
+        print(f'Use it with: ui("{tpl.author}/{tpl.name}")')
+    if args.preview:
         print(f"Preview: {tpl.preview()}")
-    else:
-        print(f"<!-- {tpl!r} -->\n{tpl.html}\n\n<style>\n{tpl.css}\n</style>")
 
 
 def main(argv: Optional[List[str]] = None) -> None:
@@ -146,10 +148,11 @@ def main(argv: Optional[List[str]] = None) -> None:
     p.add_argument("--out", default="dist")
     p.set_defaults(func=cmd_build)
 
-    p = sub.add_parser("ui", help="Download a Uiverse component (author/name or URL)")
+    p = sub.add_parser("ui", help="Download a Uiverse component into ./templates (author/name or URL)")
     p.add_argument("ref")
     p.add_argument("--category", default=None)
-    p.add_argument("--save", default=None, help="Output .html file")
+    p.add_argument("--save", default=None, help="Also write the component to this .html file")
+    p.add_argument("--folder", default=None, help="Templates folder (default: ./templates)")
     p.add_argument("--preview", action="store_true", help="Generate a preview page")
     p.set_defaults(func=cmd_ui)
 

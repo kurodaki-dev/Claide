@@ -18,7 +18,7 @@ page.add(button)
 
 The component's CSS is **injected automatically** into the `<head>`, only once, even if you use the component many times.
 
-> Components are downloaded from [uiverse-io/galaxy](https://github.com/uiverse-io/galaxy), the official archive of Uiverse (MIT license), and cached in `~/.cache/claide`. Only the first use needs Internet access.
+> Components are downloaded from [uiverse-io/galaxy](https://github.com/uiverse-io/galaxy), the official archive of Uiverse (MIT license), and **saved in a `templates` folder** next to your code. Only the first use needs Internet access.
 
 ## Customizing
 
@@ -79,7 +79,48 @@ UITemplate("author/name", category="loaders")
 
 Available: `Buttons`, `Cards`, `Checkboxes`, `Forms`, `Inputs`, `loaders`, `Notifications`, `Patterns`, `Radio-buttons`, `Toggle-switches`, `Tooltips`.
 
+## The `templates` folder
+
+The first time a component is used, Claide saves it as an HTML file in a `templates` folder next to the Python file that uses it:
+
+```text
+mysite/
+├── app.py
+├── static/
+└── templates/
+    ├── 0x-Sarthak_hungry-penguin-30.html
+    └── adamgiebl_big-moose-23.html
+```
+
+From then on, the component is read from that file:
+
+- your site **works offline** and builds without downloading anything;
+- the components are **part of your project**: commit the folder with the rest of your code;
+- you can **edit the file** (colors, text, sizes): your version is the one used. Delete the file to get the original back.
+
+Each file starts with a comment giving the author, the Uiverse link and the license, followed by the component's HTML and its `<style>`.
+
+| Option | Effect |
+|---|---|
+| `UITemplate(ref, save=False)` | don't write anything, keep the component in memory |
+| `UITemplate(ref, folder="ui")` | use another folder |
+| `CLAIDE_TEMPLATES_DIR=/path` | environment variable: same folder for the whole project |
+
 ## Your own components
+
+Put your own components in the same folder and load them by name:
+
+```python
+UITemplate.local("my-button")          # templates/my-button.html
+```
+
+A component file is plain HTML, followed by an optional `<style>` and `<script>`. You can also save any component there:
+
+```python
+ui.builtin("glow", "Send").save("send-button")   # -> templates/send-button.html
+```
+
+Other ways to create a component:
 
 ```python
 UITemplate(html="<button class='btn'>OK</button>", css=".btn { color: red }")
@@ -100,8 +141,8 @@ Available: `gradient`, `glow`, `slide`, `pushable`, `spinner`, `toggle`, `card`.
 ## Command line
 
 ```bash
-claide ui 0x-Sarthak/hungry-penguin-30 --preview      # open a preview file
-claide ui 0x-Sarthak/hungry-penguin-30 --save button.html
+claide ui 0x-Sarthak/hungry-penguin-30             # download into ./templates
+claide ui 0x-Sarthak/hungry-penguin-30 --preview   # ... and open a preview file
 ```
 
 > Uiverse elements are MIT licensed. Claide adds a credit comment with the author's name in the CSS; crediting authors on your site is appreciated.
