@@ -82,6 +82,37 @@ def search(category):
 
 For fields sent several times (checkboxes, multi-selects), use `request.form.getlist("tags")`.
 
+## Several files
+
+Put routes in a `routes` folder next to `app.py`. Every `.py` file in it (and in its sub-folders) is loaded automatically before the first request:
+
+```text
+mysite/
+├── app.py
+└── routes/
+    ├── blog.py
+    ├── contact.py
+    └── api/
+        └── users.py
+```
+
+```python
+# routes/blog.py
+from claide import *
+
+@route("/blog")
+def blog():
+    return h1("Blog")
+```
+
+Nothing to import or register in `app.py`. Files and folders whose name starts with `_` are skipped, which is handy for helpers (`routes/_db.py`) or drafts. With your own `App`, `@route` in these files registers on that app, and a file can also define `router = Router("/prefix")`, which is included automatically.
+
+| Option | Effect |
+|---|---|
+| `App(routes_folder="pages")` | load another folder |
+| `App(routes_folder=None)` | don't load any folder |
+| `app.load_routes("more")` | load an extra folder yourself |
+
 ## Routers
 
 Group routes and mount them with a prefix:

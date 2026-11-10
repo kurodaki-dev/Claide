@@ -51,6 +51,7 @@ def square(n):
 ```
 
 - Every HTML tag is a function: `h1`, `p`, `div`, `a`, `img`, `form`, `input_`...
+- Split a big site into several files: every `.py` file in a `routes/` folder is loaded automatically.
 - `static/style.css`, `static/script.js` and `static/favicon.*` are linked automatically.
 - `md("""...""")` turns Markdown into HTML; `ui("https://uiverse.io/...")` adds a Uiverse component.
 

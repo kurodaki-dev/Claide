@@ -68,6 +68,18 @@ Things to notice:
 - `request` is always available: `request.method`, `request.args`, `request.session`...
 - `@route` accepts GET and POST. Use `@get` or `@post` to accept only one.
 
+## Several files
+
+When `app.py` grows, move routes into a `routes` folder. Every file in it is loaded automatically:
+
+```text
+mysite/
+├── app.py           # @route("/") ... run()
+└── routes/
+    ├── blog.py      # @route("/blog") ...
+    └── api.py       # @get("/api/...") ...
+```
+
 ## Your CSS and JavaScript
 
 Put them in a `static` folder next to `app.py`:
